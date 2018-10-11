@@ -4,6 +4,7 @@ _test/
 pretrained/
 log/
 
+*.csv
 *.zip
 *.rar
 *.7z
