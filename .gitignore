@@ -1,0 +1,11 @@
+*__pycache__/
+_test/
+*data/*
+pretrained/
+log/
+
+*.zip
+*.rar
+*.7z
+*.pth
+*.pkl
