@@ -19,11 +19,6 @@ class RNNModel():
         out_d_c, _ = self.desc_c(d_c)
         out_d_w, _= self.desc_w(d_w)
 
-        out_t_c = out_t_c
-        out_t_w = out_t_w
-        out_d_c = out_d_c
-        out_d_w = out_d_w
-
         out_t_c = out_t_c.view(out_t_c.shape[1], -1)
         out_t_w = out_t_w.view(out_t_w.shape[1], -1)
         out_d_c = out_d_c.view(out_d_c.shape[1], -1)

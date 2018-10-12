@@ -10,6 +10,21 @@ from sklearn.feature_extraction.text import TfidfTransformer
 import pickle
 from sklearn.metrics import f1_score
 
+def train_xbg(title, label, num_round, param):
+    vectorizer = CountVectorizer()
+    tfidftransformer = TfidfTransformer()
+    tfidf = tfidftransformer.fit_transform(vectorizer.fit_transform(title))
+    dtrain = xgb.DMatrix(tfidf, label=label)
+    evallist  = [(dtrain,'train')]
+    bst = xgb.train(param, dtrain, num_round, evallist)
+    return bst
+
+
+
+
+
+
+
 def get_train_words(args):
     train_set = {}
     train_data = load_data(args.train_file)
@@ -18,7 +33,10 @@ def get_train_words(args):
             train_set[word] = 0
     output = open('train_word.pkl', 'wb')
     pickle.dump(train_set, output)
-    
+
+
+
+
 def process(data, args, word2idx):
     title = []
     label = []
@@ -28,6 +46,9 @@ def process(data, args, word2idx):
         title.append(' '.join(temp))
         label.append(label_dict[line[5]])
     return title, label
+
+
+
 
 
 def main():
