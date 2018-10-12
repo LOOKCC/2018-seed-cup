@@ -64,7 +64,7 @@ def get_class_data(leveled_data, classes):
     Get data of classes
 
     Args:
-        leveled_data (): return value of load_leveled_data
+        leveled_data (): returned value of load_leveled_data
         classes (list or tuple): list storing the classes you want
 
     Return:
