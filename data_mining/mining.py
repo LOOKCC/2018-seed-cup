@@ -9,11 +9,9 @@ def get_class_info(data):
     for line in data:
         level1, level2, level3 = line[5:8]
         if level1 not in class_info:
-            class_info[level1] = {'num': 0}
-        class_info[level1]['num'] += 1
+            class_info[level1] = {}
         if level2 not in class_info[level1]:
-            class_info[level1][level2] = {'num': 0}
-        class_info[level1][level2]['num'] += 1
+            class_info[level1][level2] = {}
         if level3 not in class_info[level1][level2]:
             class_info[level1][level2][level3] = 0
         class_info[level1][level2][level3] += 1
