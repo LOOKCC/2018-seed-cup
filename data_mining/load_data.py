@@ -14,14 +14,14 @@ def load_data(data_file):
     return data
 
 
-def load_leveled_data(data_file, save=True, out_file='../data/leveled_data.pkl', update=False):
+def load_leveled_data(data_file, save=True, out_file=None, update=False):
     """
     Get data with catogary of every level
 
     Args:
         data_file (str): the .txt file which is storing data
         save (bool, optional): save or not (default: True)
-        out_file (str, optional): path to save the .pkl file if save is True (default: '../data/leveled_data.pkl')
+        out_file (str, optional): path to save and load the .pkl file if save is True (default: data_file[:-4]+'.pkl')
         update (bool, optional): if True, the returned data will be calculated again (default: False)
 
     Return:
@@ -39,6 +39,8 @@ def load_leveled_data(data_file, save=True, out_file='../data/leveled_data.pkl',
                 ...
             }
     """
+    if out_file == None:
+        out_file = data_file[:-4]+'.pkl'
     if os.path.exists(out_file) and not update:
         return pickle.load(open(out_file, 'rb'))
     else:

@@ -8,7 +8,7 @@ from sklearn.metrics import f1_score
 from sklearn.linear_model import SGDClassifier
 from sklearn.svm import SVC
 
-from load_data import load_data
+from load_data import *
 
 
 def process(data, args):
