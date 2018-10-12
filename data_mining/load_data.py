@@ -1,6 +1,9 @@
-def load_data(file):
+import pickle
+import os
+
+def load_data(data_file):
     data = []
-    with open(file, 'r') as fp:
+    with open(data_file, 'r') as fp:
         fp.readline()
         for line in fp.readlines():
             line_list = line.strip().split('\t')
@@ -9,3 +12,67 @@ def load_data(file):
                 line_list[5:8] = [int(x) for x in line_list[5:8]]
             data.append(line_list)
     return data
+
+
+def load_leveled_data(data_file, save=True, out_file='../data/leveled_data.pkl', update=False):
+    """
+    Get data with catogary of every level
+
+    Args:
+        data_file (str): the .txt file which is storing data
+        save (bool, optional): save or not (default: True)
+        out_file (str, optional): path to save the .pkl file if save is True (default: '../data/leveled_data.pkl')
+        update (bool, optional): if True, the returned data will be calculated again (default: False)
+
+    Return:
+        leveled_data (dict): data with catogary of every level
+            {
+                level1_1:
+                {
+                    level2_1:
+                    {
+                        level3_1: [item_id, title_characters, title_words, description_characters, description_words]
+                        ...
+                    }
+                    ...
+                }
+                ...
+            }
+    """
+    if os.path.exists(out_file) and not update:
+        return pickle.load(open(out_file, 'rb'))
+    else:
+        data = load_data(data_file)
+        leveled_data = {}
+        for line in data:
+            level1, level2, level3 = line[5:8]
+            if level1 not in leveled_data:
+                leveled_data[level1] = {}
+            if level2 not in leveled_data[level1]:
+                leveled_data[level1][level2] = {}
+            if level3 not in leveled_data[level1][level2]:
+                leveled_data[level1][level2][level3] = []
+            leveled_data[level1][level2][level3].append(line)
+        if save:
+            with open(out_file, 'wb') as fp:
+                pickle.dump(leveled_data, fp)
+        return leveled_data
+
+
+def get_class_data(leveled_data, classes):
+    if len(classes) == 0:
+        if isinstance(leveled_data, dict):
+            result = []
+            for k in leveled_data:
+                result.extend(get_class_data(leveled_data[k], []))
+            return result
+        else:
+            return leveled_data
+    else:
+        return get_class_data(leveled_data[classes[0]], classes[0:])
+
+
+if __name__ == '__main__':
+    leveled_data = load_leveled_data('../data/train_a.txt')
+    class_data = get_class_data(leveled_data, [])
+    print(len(class_data), class_data[0])
