@@ -38,6 +38,7 @@ def load_leveled_data(data_file, save=True, out_file=None, update=False):
                 }
                 ...
             }
+        item_ids (list): list of item ids
     """
     if out_file == None:
         out_file = data_file[:-4]+'.pkl'
@@ -46,6 +47,7 @@ def load_leveled_data(data_file, save=True, out_file=None, update=False):
     else:
         data = load_data(data_file)
         leveled_data = {}
+        item_ids = []
         for line in data:
             level1, level2, level3 = line[5:8]
             if level1 not in leveled_data:
@@ -55,10 +57,11 @@ def load_leveled_data(data_file, save=True, out_file=None, update=False):
             if level3 not in leveled_data[level1][level2]:
                 leveled_data[level1][level2][level3] = []
             leveled_data[level1][level2][level3].append(line)
+            item_ids.append(line[0])
         if save:
             with open(out_file, 'wb') as fp:
-                pickle.dump(leveled_data, fp)
-        return leveled_data
+                pickle.dump([leveled_data, item_ids], fp)
+        return leveled_data, item_ids
 
 
 def get_class_data(leveled_data, classes):

@@ -12,12 +12,25 @@ from load_data import *
 
 
 def process(data, args):
+    ids = []
     title = []
     label = []
     for line in data:
+        ids.append(line[0])
         title.append(' '.join(line[2]))
         label.append(line[5])
-    return title, label
+    return ids, title, label
+
+
+def predict(train_leveled_data, test_leveled_data, classes):
+    data = get_class_data(train_leveled_data, classes)
+    title, label = process(data)[1:]
+    pipeline = pipeline.fit(title, label)
+    data = get_class_data(test_leveled_data, classes)
+    ids, title, label = process(data)
+    result = pipeline.predict(title)
+    result = dict(zip(ids, result))
+    return result
 
 
 def main():
@@ -38,18 +51,15 @@ def main():
     ])
 
     start = datetime.now()
-    train_data = load_data(args.train_file)
-    title, label = process(train_data, args)
-    del train_data
-    pipeline = pipeline.fit(title, label)
-    print('training over ', datetime.now()-start)
+    train_leveled_data = load_leveled_data(args.train_file)[0]
+    test_leveled_data, item_ids = load_leveled_data(args.test_file)
+    final_result = {item_id: [] for item_id in item_ids}
 
-    start = datetime.now()
-    test_data = load_data(args.test_file)
-    title, label = process(test_data, args)
-    del test_data
-    result = pipeline.predict(title)
-    print('testing over ', datetime.now()-start)
+    classes = []
+    for level in range(3):
+        result = predict(train_leveled_data, test_leveled_data, classes)
+
+    print('training over ', datetime.now()-start)
 
     score = f1_score(label, result, average='weighted')
     print('acc: ', np.mean(result == label))
