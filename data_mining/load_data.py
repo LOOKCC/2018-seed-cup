@@ -60,6 +60,23 @@ def load_leveled_data(data_file, save=True, out_file='../data/leveled_data.pkl',
 
 
 def get_class_data(leveled_data, classes):
+    """
+    Get data of classes
+
+    Args:
+        leveled_data (): return value of load_leveled_data
+        classes (list or tuple): list storing the classes you want
+
+    Return:
+        [
+            [item_id, title_chars, title_words, descrip_chars, descrip_words, level1, level2, level3],
+            ...
+        ]
+
+    Example:
+        get_class_data(leveled_data, [1, 2])  # get the data of class 1 in level1 and class 2 level2
+        get_class_data(leveled_data, [])  # get the data of all classes
+    """
     if len(classes) == 0:
         if isinstance(leveled_data, dict):
             result = []
@@ -69,10 +86,10 @@ def get_class_data(leveled_data, classes):
         else:
             return leveled_data
     else:
-        return get_class_data(leveled_data[classes[0]], classes[0:])
+        return get_class_data(leveled_data[classes[0]], classes[1:])
 
 
 if __name__ == '__main__':
     leveled_data = load_leveled_data('../data/train_a.txt')
-    class_data = get_class_data(leveled_data, [])
+    class_data = get_class_data(leveled_data, [3])
     print(len(class_data), class_data[0])
