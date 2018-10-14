@@ -24,7 +24,18 @@ def process(data, level=0):
     return ids, title, label
 
 
-def predict(pipeline, train_leveled_data, test_data, classes):
+def predict(train_leveled_data, test_data, classes):
+    pipeline = Pipeline([('vect', CountVectorizer()),
+                         # ('tfidf', TfidfTransformer()),
+                         # ('clf', MultinomialNB()),
+                         # ('clf', SVC(kernel = 'linear')),
+                         ('clf', SGDClassifier(loss='hinge',
+                                            penalty='l2',
+                                            alpha=5e-5 * 4.5**len(classes),
+                                            max_iter=10,
+                                            shuffle=True,
+                                            random_state=42)),
+    ])
     data = get_class_data(train_leveled_data, classes)
     title, label = process(data, len(classes))[1:]
     if len(set(label)) > 1:
@@ -52,17 +63,6 @@ def list2dict(data, predict_result):
 
 
 def main(args):
-    pipeline = Pipeline([('vect', CountVectorizer()),
-                         # ('tfidf', TfidfTransformer()),
-                         # ('clf', MultinomialNB()),
-                         # ('clf', SVC(kernel = 'linear')),
-                         ('clf', SGDClassifier(loss='hinge',
-                                            penalty='l2',
-                                            alpha=1e-5,
-                                            max_iter=10,
-                                            random_state=42)),
-    ])
-
     train_leveled_data = load_leveled_data(args.train_file)[0]
     test_data = load_data(args.test_file)  # not be leveled now
     test_leveled_data = test_data
@@ -76,7 +76,7 @@ def main(args):
         for _ in range(len(classes)):
             c = classes.pop(0)
             level_data = functools.reduce(lambda x,y: x[y], [test_leveled_data, *c])
-            result.update(predict(pipeline, train_leveled_data, level_data, c))
+            result.update(predict(train_leveled_data, level_data, c))
 
             keys = functools.reduce(lambda x,y: x[y], [train_leveled_data, *c]).keys()
             classes.extend([c+[key] for key in keys])
@@ -98,6 +98,7 @@ def main(args):
             print('level', level, 'F1 score: ', score)
 
     with open(args.predict_file, 'w') as fp:
+        fp.write('item_id\tcate1_id\tcate2_id\tcate3_id\n')
         for item_id in final_result:
             fp.write('\t'.join((item_id, *[str(x) for x in final_result[item_id]])))
             fp.write('\n')

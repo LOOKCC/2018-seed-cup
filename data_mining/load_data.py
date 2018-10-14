@@ -49,7 +49,11 @@ def load_leveled_data(data_file, save=True, out_file=None, update=False):
         leveled_data = {}
         item_ids = []
         for line in data:
-            level1, level2, level3 = line[5:8]
+            try:
+                level1, level2, level3 = line[5:8]
+            except:
+                print(line)
+                exit(0)
             if level1 not in leveled_data:
                 leveled_data[level1] = {}
             if level2 not in leveled_data[level1]:
