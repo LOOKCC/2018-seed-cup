@@ -100,7 +100,7 @@ def main(args):
     # test_leveled_data, _ = load_leveled_data(args.test_file)
     # test_data_1 = get_class_data(test_leveled_data, [])
     test_data_1 = load_data(args.test_file)
-    param = {'max_depth':6, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
+    param = {'max_depth':7, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
     num_round = 200 # 循环次数
     test_data_1 = train_test(train_data_1, test_data_1,class_info, [], param, num_round)
 
@@ -108,14 +108,14 @@ def main(args):
         train_data_2 = get_class_data(train_leveled_data, [key_1])
         test_data_2 = get_label_data(test_data_1, [key_1])     
         param = {'max_depth':6, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
-        num_round = 10 # 循环次数
+        num_round = 200 # 循环次数
         test_data_2 = train_test(train_data_2, test_data_2, class_info, [key_1], param, num_round)
 
         for key_2 in class_info[key_1].keys():
             train_data_3 = get_class_data(train_leveled_data, [key_1, key_2])
             test_data_3 = get_label_data(test_data_2, [key_1, key_2])
             param = {'max_depth':6, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
-            num_round = 5 # 循环次数
+            num_round = 200 # 循环次数
             test_data_3 = train_test(train_data_3, test_data_3, class_info, [key_1, key_2], param, num_round)
             finall_test += test_data_3
     
@@ -149,26 +149,27 @@ if __name__ == '__main__':
     args = parser.parse_args()
     
     test_result = main(args)
-    test(test_result)
-    # with open("submit.txt", "w") as f:
-    #     f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
-    #     for x in test_result:
-    #         f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
+    # test(test_result)
+    with open("submit.txt", "w") as f:
+        f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
+        for x in test_result:
+            f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
+            # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
 
-    # finall = []
-    # with open("submit.txt", 'r') as f:
-    #     f.readline()
-    #     lines_sub = f.readlines()
-    # with open(args.test_file, 'r') as f:
-    #     f.readline()
-    #     lines_test = f.readlines()
-    # for test_line in lines_test:
-    #     for sub_line in lines_sub:
-    #         if test_line[0:33] == sub_line[0:33]:
-    #             finall.append(sub_line)
-    # with open("submit_2.txt", 'w') as f:
-    #     f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
-    #     for line in finall:
-    #         f.write(line) 
+    finall = []
+    with open("submit.txt", 'r') as f:
+        f.readline()
+        lines_sub = f.readlines()
+    with open(args.test_file, 'r') as f:
+        f.readline()
+        lines_test = f.readlines()
+    for test_line in lines_test:
+        for sub_line in lines_sub:
+            if test_line[0:33] == sub_line[0:33]:
+                finall.append(sub_line)
+    with open("submit_2.txt", 'w') as f:
+        f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
+        for line in finall:
+            f.write(line) 
     
 
