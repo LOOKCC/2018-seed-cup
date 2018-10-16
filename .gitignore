@@ -1,9 +1,10 @@
 *__pycache__/
 _test/
 *data/*
-pretrained/
+trained_models/
 log/
 
+*.txt
 *.csv
 *.zip
 *.rar
