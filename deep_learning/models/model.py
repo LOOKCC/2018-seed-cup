@@ -7,15 +7,16 @@ from torch.autograd import Variable
 
 class TextCNN(nn.Module):
 
-    def __init__(self, TEXT, LABEL, embedding_dim=256, dropout=0.2):
+    def __init__(self, TEXT, LABEL, dropout=0.2):
         super(TextCNN, self).__init__()
         c = 100
         kernel_sizes = (3, 4, 5)
+        embedding_dim = TEXT.vocab.vectors.size(1)
         self.embedding = nn.Embedding(len(TEXT.vocab), embedding_dim)
         self.convs = nn.ModuleList([nn.Conv2d(1, c, (k, embedding_dim)) for k in kernel_sizes])
         #self.bns = nn.ModuleList([nn.BatchNorm2d(c) for _ in range(len(kernel_sizes))])
         self.dropout = nn.Dropout(dropout)
-        self.fc = nn.Linear(len(kernel_sizes)*c, len(LABEL[0].vocab))
+        self.fcs = nn.ModuleList([nn.Linear(len(kernel_sizes)*c, len(LABEL[i].vocab)) for i in len(LABEL)])
         self._initialize_weights()
         self.embedding.weight.data.copy_(TEXT.vocab.vectors)
 
@@ -27,8 +28,8 @@ class TextCNN(nn.Module):
 
         x = torch.cat(x, 1)
         x = self.dropout(x)  # (N, len(Ks)*Co)
-        logit = self.fc(x)  # (N, C)
-        return logit
+        x = [fc(x) for fc in self.fcs]  # (N, C)
+        return x
 
 
     def _initialize_weights(self):

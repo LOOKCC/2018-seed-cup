@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# _*_ coding: utf-8 _*_
+
 import os
 import torch
 import argparse
@@ -8,10 +11,12 @@ from sklearn.metrics import f1_score, accuracy_score
 from load_data import load_dataset
 from models.model import TextCNN
 
-def train(args, train_iter, TEXT, LABEL, checkpoint=None):
-    model = TextCNN(TEXT, LABEL, embedding_dim=args.embedding_dim)
-    criterion = nn.CrossEntropyLoss()
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+
+def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
+    model = TextCNN(TEXT, LABEL)
+    criterion = [nn.CrossEntropyLoss() for _ in range(len(LABEL))]
+    optimizer = optim.Adam(model.parameters(), lr=args.lr,
+                           weight_decay=args.weight_decay)
     start_epoch = 0
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model'])
@@ -27,22 +32,29 @@ def train(args, train_iter, TEXT, LABEL, checkpoint=None):
     model = model.train()
     print('====   Training..   ====')
     for epoch in range(start_epoch, start_epoch+args.check_epoch):
-        print('Epoch: %d  \t' % (epoch, ), end='')
+        print('----    Epoch: %d    ----' % (epoch, ))
         loss_sum = 0
-        out, label = [], []
+        all_pred, all_label = [[], [], []], [[], [], []]
         start_time = datetime.now()
         for iter_num, batch in enumerate(train_iter):
+            label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
             optimizer.zero_grad()
             output = model(batch.title_words)
-            loss = criterion(output, batch.cate1_id)
-            loss.backward()
+            output = cate_manager.merge_weights(output)
+            for i in range(len(LABEL)):
+                loss = criterion[i](output[i], label[i])
+                loss.backward()
+                loss_sum += loss.item()
+                all_pred[i].extend(output[i].max(1)[1].tolist())
+                all_label[i].extend(label[i].tolist())
             optimizer.step()
-            out.extend(output.max(1)[1].tolist())
-            label.extend(batch.cate1_id.tolist())
-        print('Loss = {}  \tAcc = {}  \tF1 score: {}  \ttime: {}  \t'.format(loss_sum/(iter_num+1),
-            accuracy_score(out, label), f1_score(label, out, average='weighted'), datetime.now()-start_time))
+        print('Loss = {}  \ttime: {}'.format(loss_sum/(iter_num+1),
+                                             datetime.now()-start_time))
+        print(*['Cate{} F1 score: {}  \t'.format(i, f1_score(all_label[i],
+                                            all_pred[i], average='weighted'))])
     if args.snapshot_path is None:
-        snapshot_path = 'snapshot/model_{}.pth'.format(start_epoch+args.check_epoch-1)
+        snapshot_path = 'snapshot/model_{}.pth'.format(
+            start_epoch+args.check_epoch-1)
     checkpoint = {
         'model': model.state_dict(),
         'optim': optimizer.state_dict(),
@@ -53,7 +65,7 @@ def train(args, train_iter, TEXT, LABEL, checkpoint=None):
 
 
 @torch.no_grad()
-def evaluate(args, valid_iter, TEXT, LABEL, checkpoint):
+def evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint):
     model = TextCNN(TEXT, LABEL)
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model'])
@@ -66,28 +78,41 @@ def evaluate(args, valid_iter, TEXT, LABEL, checkpoint):
     model = model.eval()
     print('====   Validing..   ====')
     start_time = datetime.now()
-    out, label = [], []
+    all_pred, all_label = [[], [], []], [[], [], []]
     for iter_num, batch in enumerate(valid_iter):
         output = model(batch.title_words)
-        out.extend(output.max(1)[1].tolist())
-        label.extend(batch.cate1_id.tolist())
-    print('Acc: {}  \tF1 score: {}  \ttime: {}  \t'.format(accuracy_score(out, label),
-        f1_score(label, out, average='weighted'), datetime.now()-start_time), end='')
+        for i in range(len(output)):
+            all_pred[i].extend(output[i].max(1)[1].tolist())
+            all_label[i].extend(label[i].tolist())
+    print('time: {}'.format(datetime.now()-start_time))
+    print(*['Cate{} F1 score: {}  \t'.format(i, f1_score(all_label[i],
+                                        all_pred[i], average='weighted'))])
 
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root', default='../data', help='Path to dataset (default="../data")')
-    parser.add_argument('--device', default='cpu', help='Device to use (default="cpu")')
-    parser.add_argument('--snapshot', default=None, help='Path to save model to save (default="checkpoints/crnn.pth")')
-    parser.add_argument('--snapshot_path', default=None, help='Path to save model (default="snapshot/model_{epoch}.pth")')
-    parser.add_argument('--batch_size', type=int, default=32, help='Input batch size (default=128)')
-    parser.add_argument('--epoch_num', type=int, default=50, help='Number of epochs to train for (default=50)')
-    parser.add_argument('--check_epoch', type=int, default=10, help='Epoch to save and test (default=10)')
-    parser.add_argument('--lr', type=float, default=0.001, help='Learning rate for Optimizer (default=0.001)')
-    parser.add_argument('--weight_decay', type=float, default=0, help='Weight decay for Optimizer (default=0)')
-    parser.add_argument('--valid', action='store_true', help='Evaluate only once')
-    parser.add_argument('--embedding_dim', type=int, default=256, help='Dim of embedding vectors (default=256)')
+    parser.add_argument('--root', default='../data',
+                        help='Path to dataset (default="../data")')
+    parser.add_argument('--device', default='cpu',
+                        help='Device to use (default="cpu")')
+    parser.add_argument('--snapshot', default=None,
+                        help='Path to save model to save (default="checkpoints/crnn.pth")')
+    parser.add_argument('--batch_size', type=int, default=32,
+                        help='Input batch size (default=128)')
+
+    parser.add_argument('--snapshot_path', default=None,
+                        help='Path to save model (default="snapshot/model_{epoch}.pth")')
+    parser.add_argument('--epoch_num', type=int, default=50,
+                        help='Number of epochs to train for (default=50)')
+    parser.add_argument('--check_epoch', type=int, default=10,
+                        help='Epoch to save and test (default=10)')
+    parser.add_argument('--lr', type=float, default=0.001,
+                        help='Learning rate for Optimizer (default=0.001)')
+    parser.add_argument('--weight_decay', type=float, default=0,
+                        help='Weight decay for Optimizer (default=0)')
+
+    parser.add_argument('--valid', action='store_true',
+                        help='Evaluate only once')
     args = parser.parse_args()
     print(args)
 
@@ -102,11 +127,12 @@ if __name__ == '__main__':
         print('Pre-trained model detected.\nLoading model...')
         checkpoint = torch.load(args.snapshot)
 
-    train_iter, valid_iter, TEXT, LABEL = load_dataset(args)
+    train_iter, valid_iter, test_iter, TEXT, LABEL, cate_manager = load_dataset(args)
     for i in range(args.epoch_num//args.check_epoch):
         if not args.valid:
-            train(args, train_iter, TEXT, LABEL, checkpoint=checkpoint)
-            evaluate(args, valid_iter, TEXT, LABEL, checkpoint)
+            train(args, train_iter, TEXT, LABEL,
+                  cate_manager, checkpoint=checkpoint)
+            evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint)
         else:
-            evaluate(args, valid_iter, TEXT, LABEL, checkpoint)
+            evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint)
             break
