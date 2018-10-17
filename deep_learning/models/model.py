@@ -3,18 +3,17 @@ import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
 from torch.autograd import Variable
+from .conv import Conv
 
 
 class TextCNN(nn.Module):
 
     def __init__(self, TEXT, LABEL, dropout=0.2, freeze=True):
         super(TextCNN, self).__init__()
-        c = 256
-        kernel_sizes = (3, 4, 5)
+        c = 512
         embedding_dim = TEXT.vocab.vectors.size(1)
         self.embedding = nn.Embedding(len(TEXT.vocab), embedding_dim)
-        self.convs = nn.ModuleList([nn.Conv2d(1, c, (k, embedding_dim)) for k in kernel_sizes])
-        #self.bns = nn.ModuleList([nn.BatchNorm2d(c) for _ in range(len(kernel_sizes))])
+        self.convs = Conv(embedding_dim, c, 3, 1, 1, dim=1, numblocks=3)
         self.dropout = nn.Dropout(dropout) if dropout else None
         self.fcs = nn.ModuleList([nn.Linear(len(kernel_sizes)*c, len(LABEL[i].vocab)) for i in range(len(LABEL))])
         self._initialize_weights()
@@ -24,11 +23,9 @@ class TextCNN(nn.Module):
 
     def forward(self, x):
         x = self.embedding(x)
-        x = x.unsqueeze(1)  # (N, Ci, W, D)
-        x = [F.relu(conv(x).squeeze(3)) for conv in self.convs]  # [(N, Co, W), ...]*len(Ks)
-        x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # [(N, Co), ...]*len(Ks)
+        x = self.convs(x)  # [(N, Co, W), ...]*len(Ks)
+        x = F.max_pool1d(x, x.size(2)).squeeze(2) # [(N, Co), ...]*len(Ks)
 
-        x = torch.cat(x, 1)
         x = x if self.dropout is None else self.dropout(x)  # (N, len(Ks)*Co)
         x = [fc(x) for fc in self.fcs]  # (N, C)
         return x

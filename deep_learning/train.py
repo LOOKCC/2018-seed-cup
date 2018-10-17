@@ -31,7 +31,7 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
     # train
     model = model.train()
     print('====   Training..   ====')
-    weight = (0.3, 0.5, 0.2)
+    weight = (0.2, 0.3, 0.5)
     for epoch in range(start_epoch, start_epoch+args.check_epoch):
         print('----    Epoch: %d    ----' % (epoch, ))
         loss_sum = 0
