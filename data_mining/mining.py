@@ -33,7 +33,7 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('file', type=str, help='Data file')
     args = parser.parse_args()
-    
+
     data = load_data(args.file)
     class_info = get_class_info(data)
-    word_count(data)
+    # word_count(data)

@@ -7,18 +7,20 @@ from torch.autograd import Variable
 
 class TextCNN(nn.Module):
 
-    def __init__(self, TEXT, LABEL, dropout=0.2):
+    def __init__(self, TEXT, LABEL, dropout=0.2, freeze=True):
         super(TextCNN, self).__init__()
-        c = 100
+        c = 256
         kernel_sizes = (3, 4, 5)
         embedding_dim = TEXT.vocab.vectors.size(1)
         self.embedding = nn.Embedding(len(TEXT.vocab), embedding_dim)
         self.convs = nn.ModuleList([nn.Conv2d(1, c, (k, embedding_dim)) for k in kernel_sizes])
         #self.bns = nn.ModuleList([nn.BatchNorm2d(c) for _ in range(len(kernel_sizes))])
-        self.dropout = nn.Dropout(dropout)
-        self.fcs = nn.ModuleList([nn.Linear(len(kernel_sizes)*c, len(LABEL[i].vocab)) for i in len(LABEL)])
+        self.dropout = nn.Dropout(dropout) if dropout else None
+        self.fcs = nn.ModuleList([nn.Linear(len(kernel_sizes)*c, len(LABEL[i].vocab)) for i in range(len(LABEL))])
         self._initialize_weights()
         self.embedding.weight.data.copy_(TEXT.vocab.vectors)
+        if freeze:
+            self.embedding.weight.requires_grad=False
 
     def forward(self, x):
         x = self.embedding(x)
@@ -27,7 +29,7 @@ class TextCNN(nn.Module):
         x = [F.max_pool1d(i, i.size(2)).squeeze(2) for i in x]  # [(N, Co), ...]*len(Ks)
 
         x = torch.cat(x, 1)
-        x = self.dropout(x)  # (N, len(Ks)*Co)
+        x = x if self.dropout is None else self.dropout(x)  # (N, len(Ks)*Co)
         x = [fc(x) for fc in self.fcs]  # (N, C)
         return x
 

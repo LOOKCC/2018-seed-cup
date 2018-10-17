@@ -13,7 +13,7 @@ from torchtext.vocab import Vectors
 def load_dataset(args):
     TEXT = data.Field(sequential=True, use_vocab=True,
                       tokenize=lambda x: x.split(','), batch_first=True)
-    LABEL = [data.Field(sequential=True, tokenize=int, use_vocab=True,
+    LABEL = [data.Field(sequential=False, use_vocab=True,
                         unk_token=None) for _ in range(3)]
     ID = data.Field(sequential=True, use_vocab=False)
 
@@ -39,7 +39,7 @@ def load_dataset(args):
     TEXT.build_vocab(train_data, valid_data, test_data, vectors=Vectors(
         'embedding/embedding.txt', cache='embedding/vec_cache/'))
     for L in LABEL:
-        L.build_vocab(train_data)
+        L.build_vocab(train_data, valid_data)
 
     train_iter, valid_iter = data.BucketIterator.splits(
         (train_data, valid_data),
@@ -78,13 +78,13 @@ class CateManager(object):
         device = torch.device(args.device)
         self.cate1to2 = torch.zeros(cate_num[0], cate_num[1]).to(device)
         self.cate2to3 = torch.zeros(cate_num[1], cate_num[2]).to(device)
-        for i in range(self.info):
-            idx1 = self.vocabs[0].stoi[i]
-            idx2 = [self.vocabs[1].stoi[j] for j in self.info[i].keys()]
+        for i in self.info:
+            idx1 = self.vocabs[0].stoi[str(i)]
+            idx2 = [self.vocabs[1].stoi[str(j)] for j in self.info[i].keys()]
             self.cate1to2[idx1, idx2] = 1
-            for j in range(self.info[i]):
-                idx2 = self.vocabs[1].stoi[j]
-                idx3 = [self.vocabs[2].stoi[k] for k in self.info[i][j].keys()]
+            for j in self.info[i]:
+                idx2 = self.vocabs[1].stoi[str(j)]
+                idx3 = [self.vocabs[2].stoi[str(k)] for k in self.info[i][j].keys()]
                 self.cate2to3[idx2, idx3] = 1
 
     def merge_weights(self, cate_out):
