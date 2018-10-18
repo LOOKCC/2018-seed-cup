@@ -5,6 +5,7 @@ import sys
 import torch
 import pickle
 import numpy as np
+import torch.nn as nn
 from torchtext import data
 from torchtext import datasets
 from torchtext.vocab import Vectors
@@ -61,33 +62,5 @@ def load_dataset(args):
         train=False,
         device=args.device)
 
-    cate_manager = CateManager(args, LABEL)
+    return train_iter, valid_iter, test_iter, TEXT, LABEL
 
-    return train_iter, valid_iter, test_iter, TEXT, LABEL, cate_manager
-
-
-class CateManager(object):
-    """
-    """
-    def __init__(self, args, LABEL):
-        super(CateManager, self).__init__()
-        with open(os.path.join(args.root, 'class_info.pkl'), 'rb') as fp:
-            self.info = pickle.load(fp)
-        self.vocabs = [L.vocab for L in LABEL]
-        cate_num = [len(vocab) for vocab in self.vocabs]
-        device = torch.device(args.device)
-        self.cate1to2 = torch.zeros(cate_num[0], cate_num[1]).to(device)
-        self.cate2to3 = torch.zeros(cate_num[1], cate_num[2]).to(device)
-        for i in self.info:
-            idx1 = self.vocabs[0].stoi[str(i)]
-            idx2 = [self.vocabs[1].stoi[str(j)] for j in self.info[i].keys()]
-            self.cate1to2[idx1, idx2] = 1
-            for j in self.info[i]:
-                idx2 = self.vocabs[1].stoi[str(j)]
-                idx3 = [self.vocabs[2].stoi[str(k)] for k in self.info[i][j].keys()]
-                self.cate2to3[idx2, idx3] = 1
-
-    def merge_weights(self, cate_out):
-        cate_out[1] *= torch.mm(cate_out[0], self.cate1to2)
-        cate_out[2] *= torch.mm(cate_out[1], self.cate2to3)
-        return cate_out
