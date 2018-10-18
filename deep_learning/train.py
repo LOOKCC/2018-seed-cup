@@ -4,12 +4,53 @@
 import os
 import torch
 import argparse
+import pickle
+import torch.nn.functional as F
 from torch import nn, optim
 from datetime import datetime
 from sklearn.metrics import f1_score, accuracy_score
 
 from load_data import load_dataset
 from models.model import TextCNN
+
+
+class CateManager(object):
+    """
+    """
+    def __init__(self, args, LABEL):
+        super(CateManager, self).__init__()
+        with open(os.path.join(args.root, 'class_info.pkl'), 'rb') as fp:
+            self.info = pickle.load(fp)
+        self.vocabs = [L.vocab for L in LABEL]
+        cate_num = [len(vocab) for vocab in self.vocabs]
+        device = torch.device(args.device)
+        self.cate1to2 = torch.zeros(cate_num[0], cate_num[1]).to(device)
+        self.cate2to3 = torch.zeros(cate_num[1], cate_num[2]).to(device)
+        self.merge = args.merge
+        for i in self.info:
+            idx1 = self.vocabs[0].stoi[str(i)]
+            idx2 = [self.vocabs[1].stoi[str(j)] for j in self.info[i].keys()]
+            self.cate1to2[idx1, idx2] = 1
+            for j in self.info[i]:
+                idx2 = self.vocabs[1].stoi[str(j)]
+                idx3 = [self.vocabs[2].stoi[str(k)] for k in self.info[i][j].keys()]
+                self.cate2to3[idx2, idx3] = 1
+
+    def merge_weights(self, cate_out, label=None):
+        if self.merge:
+            # cate_out[1] = cate_out[1] * self.cate1to2[cate_out[0].max(1)[1]]
+            # cate_out[2] = cate_out[2] * self.cate2to3[cate_out[1].max(1)[1]]
+            # cate_out[1] = cate_out[1] * torch.mm(cate_out[0], self.cate1to2)
+            # cate_out[2] = cate_out[2] * torch.mm(cate_out[1], self.cate2to3)
+            # cate_out[1] = cate_out[1] * torch.mm(F.softmax(cate_out[0]), self.cate1to2)
+            # cate_out[2] = cate_out[2] * torch.mm(F.softmax(cate_out[1]), self.cate2to3)
+            if label is not None:
+                cate_out[1] = cate_out[1] * (self.cate1to2[label[0]]*101-100)
+                cate_out[2] = cate_out[2] * (self.cate2to3[label[1]]*101-100)
+            else:
+                cate_out[1] = cate_out[1] * (self.cate1to2[cate_out[0].max(1)[1]]*101-100)
+                cate_out[2] = cate_out[2] * (self.cate2to3[cate_out[1].max(1)[1]]*101-100)
+        return cate_out
 
 
 def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
@@ -41,7 +82,7 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
             label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
             optimizer.zero_grad()
             output = model(batch.title_words)
-            output = cate_manager.merge_weights(output)
+            output = cate_manager.merge_weights(output, label)
             loss = 0
             for i in range(len(LABEL)):
                 loss += criterion[i](output[i], label[i]) * weight[i]
@@ -84,6 +125,7 @@ def evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint):
     for iter_num, batch in enumerate(valid_iter):
         label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
         output = model(batch.title_words)
+        output = cate_manager.merge_weights(output)
         for i in range(len(output)):
             all_pred[i].extend(output[i].max(1)[1].tolist())
             all_label[i].extend(label[i].tolist())
@@ -107,8 +149,8 @@ if __name__ == '__main__':
                         help='Path to save model (default="snapshot/model_{epoch}.pth")')
     parser.add_argument('--epoch_num', type=int, default=50,
                         help='Number of epochs to train for (default=50)')
-    parser.add_argument('--check_epoch', type=int, default=10,
-                        help='Epoch to save and test (default=10)')
+    parser.add_argument('--check_epoch', type=int, default=5,
+                        help='Epoch to save and test (default=5)')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='Learning rate for Optimizer (default=0.001)')
     parser.add_argument('--weight_decay', type=float, default=0,
@@ -120,6 +162,8 @@ if __name__ == '__main__':
                         help='Freeze embedding layer or not')
     parser.add_argument('--dropout', type=float, default=0,
                         help='rate of dropout (default=0)')
+    parser.add_argument('--merge', action='store_true',
+                        help='Merge probality of every level')
     args = parser.parse_args()
     print(args)
 
@@ -134,7 +178,8 @@ if __name__ == '__main__':
         print('Pre-trained model detected.\nLoading model...')
         checkpoint = torch.load(args.snapshot)
 
-    train_iter, valid_iter, test_iter, TEXT, LABEL, cate_manager = load_dataset(args)
+    train_iter, valid_iter, test_iter, TEXT, LABEL = load_dataset(args)
+    cate_manager = CateManager(args, LABEL)
     for i in range(args.epoch_num//args.check_epoch):
         if not args.valid:
             checkpoint = train(args, train_iter, TEXT, LABEL,

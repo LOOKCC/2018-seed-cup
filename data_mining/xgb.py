@@ -20,6 +20,8 @@ def get_train_words(train_data):
     for line in train_data:
         for word in line[2]:
             train_set[word] = 0
+        for word in line[4]:
+            train_set[word] = 0
     return train_set
 
 
@@ -28,6 +30,7 @@ def process(data, args, train_words, label_dict, cate):
     label = []
     for line in data:
         temp = [x for x in line[2] if x in train_words]
+        temp += [x for x in line[4] if x in train_words]
         title.append(' '.join(temp))
         label.append(label_dict[line[cate]])
     return title, label
@@ -36,6 +39,7 @@ def process_test(data, args, train_words):
     title = []
     for line in data:
         temp = [x for x in line[2] if x in train_words]
+        temp += [x for x in line[4] if x in train_words]
         title.append(' '.join(temp))
     return title
 
@@ -74,14 +78,14 @@ def train_test(train_data, test_data, class_info, keys, param, num_round):
     vectorizer = CountVectorizer()
     tfidftransformer = TfidfTransformer()
     tfidf = vectorizer.fit_transform(train_title)
-    # tfidf = tfidftransformer.fit_transform()
+    tfidf = tfidftransformer.fit_transform(tfidf)
     dtrain = xgb.DMatrix(tfidf, label=train_label)
     evallist  = [(dtrain,'train')]
     bst = xgb.train(param, dtrain, num_round, evallist)
     print("cate1 train OK")
 
     tfidf = vectorizer.transform(test_title)
-    # tfidf = tfidftransformer.transform()
+    tfidf = tfidftransformer.transform(tfidf)
     dtest = xgb.DMatrix(tfidf)
     pred = bst.predict(dtest)
 
