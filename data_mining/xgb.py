@@ -81,30 +81,21 @@ def train_test(train_data, test_data, class_info, keys, param, num_round):
     param['num_class'] = len(label2idx)
     vectorizer = CountVectorizer()
     tfidftransformer = TfidfTransformer()
-<<<<<<< HEAD
+
     title = vectorizer.fit_transform(train_title)
     dis = vectorizer.fit_transform(train_dis)
     tfidf_dis = tfidftransformer.fit_transform(dis)
     tfidf = hstack((title, tfidf_dis))
-    print(tfidf.shape)
-=======
-    tfidf = vectorizer.fit_transform(train_title)
-    tfidf = tfidftransformer.fit_transform(tfidf)
->>>>>>> 2de30128d420b6b531588771c07271de2cae52e1
+
     dtrain = xgb.DMatrix(tfidf, label=train_label)
     evallist  = [(dtrain,'train')]
     bst = xgb.train(param, dtrain, num_round, evallist)
     print("cate1 train OK")
 
-<<<<<<< HEAD
     title = vectorizer.transform(test_title)
     dis = vectorizer.transform(test_dis)
     tfidf_dis = tfidftransformer.transform(dis)
     tfidf = hstack((title, tfidf_dis))
-=======
-    tfidf = vectorizer.transform(test_title)
-    tfidf = tfidftransformer.transform(tfidf)
->>>>>>> 2de30128d420b6b531588771c07271de2cae52e1
     dtest = xgb.DMatrix(tfidf)
     pred = bst.predict(dtest)
 
