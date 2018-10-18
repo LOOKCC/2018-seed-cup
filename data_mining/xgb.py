@@ -11,7 +11,7 @@ from sklearn.feature_extraction.text import CountVectorizer
 from sklearn.feature_extraction.text import TfidfTransformer
 import pickle
 from sklearn.metrics import f1_score
-
+from scipy.sparse import hstack
 
 
 
@@ -20,24 +20,32 @@ def get_train_words(train_data):
     for line in train_data:
         for word in line[2]:
             train_set[word] = 0
+        for word in line[4]:
+            train_set[word] = 0
     return train_set
 
 
 def process(data, args, train_words, label_dict, cate):
     title = []
+    dis = []
     label = []
     for line in data:
         temp = [x for x in line[2] if x in train_words]
         title.append(' '.join(temp))
+        temp = [x for x in line[4] if x in train_words]
+        dis.append(' '.join(temp))
         label.append(label_dict[line[cate]])
-    return title, label
+    return title, dis, label
 
 def process_test(data, args, train_words):
     title = []
+    dis = []
     for line in data:
         temp = [x for x in line[2] if x in train_words]
         title.append(' '.join(temp))
-    return title
+        temp = [x for x in line[4] if x in train_words]
+        dis.append(' '.join(temp))
+    return title, dis
 
 
 def get_label_data(test_data, keys):
@@ -68,20 +76,25 @@ def train_test(train_data, test_data, class_info, keys, param, num_round):
     for i in range(len(key_list)):
         label2idx[key_list[i]] = i
 
-    train_title, train_label = process(train_data, args, train_words, label2idx, cate_idx)
-    test_title = process_test(test_data, args, train_words)
+    train_title, train_dis, train_label = process(train_data, args, train_words, label2idx, cate_idx)
+    test_title, test_dis = process_test(test_data, args, train_words)
     param['num_class'] = len(label2idx)
     vectorizer = CountVectorizer()
     tfidftransformer = TfidfTransformer()
-    tfidf = vectorizer.fit_transform(train_title)
-    # tfidf = tfidftransformer.fit_transform()
+    title = vectorizer.fit_transform(train_title)
+    dis = vectorizer.fit_transform(train_dis)
+    tfidf_dis = tfidftransformer.fit_transform(dis)
+    tfidf = hstack((title, tfidf_dis))
+    print(tfidf.shape)
     dtrain = xgb.DMatrix(tfidf, label=train_label)
     evallist  = [(dtrain,'train')]
     bst = xgb.train(param, dtrain, num_round, evallist)
     print("cate1 train OK")
 
-    tfidf = vectorizer.transform(test_title)
-    # tfidf = tfidftransformer.transform()
+    title = vectorizer.transform(test_title)
+    dis = vectorizer.transform(test_dis)
+    tfidf_dis = tfidftransformer.transform(dis)
+    tfidf = hstack((title, tfidf_dis))
     dtest = xgb.DMatrix(tfidf)
     pred = bst.predict(dtest)
 
