@@ -14,7 +14,6 @@ from sklearn.metrics import f1_score
 from scipy.sparse import hstack
 
 
-
 def get_train_words(train_data):
     train_set = {}
     for line in train_data:
@@ -37,6 +36,7 @@ def process(data, args, train_words, label_dict, cate):
         label.append(label_dict[line[cate]])
     return title, dis, label
 
+
 def process_test(data, args, train_words):
     title = []
     dis = []
@@ -54,7 +54,7 @@ def get_label_data(test_data, keys):
     elif len(keys) == 1:
         return [x for x in test_data if x[8] == keys[0]]
     elif len(keys) == 2:
-        return [x for x in test_data if (x[8] == keys[0] and x[9] == keys[1])]        
+        return [x for x in test_data if (x[8] == keys[0] and x[9] == keys[1])]
 
 
 def train_test(train_data, test_data, class_info, keys, param, num_round):
@@ -76,7 +76,8 @@ def train_test(train_data, test_data, class_info, keys, param, num_round):
     for i in range(len(key_list)):
         label2idx[key_list[i]] = i
 
-    train_title, train_dis, train_label = process(train_data, args, train_words, label2idx, cate_idx)
+    train_title, train_dis, train_label = process(
+        train_data, args, train_words, label2idx, cate_idx)
     test_title, test_dis = process_test(test_data, args, train_words)
     param['num_class'] = len(label2idx)
     vectorizer = CountVectorizer()
@@ -88,7 +89,7 @@ def train_test(train_data, test_data, class_info, keys, param, num_round):
     tfidf = hstack((title, tfidf_dis))
 
     dtrain = xgb.DMatrix(tfidf, label=train_label)
-    evallist  = [(dtrain,'train')]
+    evallist = [(dtrain, 'train')]
     bst = xgb.train(param, dtrain, num_round, evallist)
     print("cate1 train OK")
 
@@ -103,10 +104,10 @@ def train_test(train_data, test_data, class_info, keys, param, num_round):
         test_data[i].append(key_list[int(pred[i])])
     return test_data
 
-    
+
 def main(args):
     finall_test = []
-    f = open(args.class_info,'rb')
+    f = open(args.class_info, 'rb')
     class_info = pickle.load(f)
     train_leveled_data, _ = load_leveled_data(args.train_file)
     train_data_1 = get_class_data(train_leveled_data, [])
@@ -114,26 +115,32 @@ def main(args):
     # test_leveled_data, _ = load_leveled_data(args.test_file)
     # test_data_1 = get_class_data(test_leveled_data, [])
     test_data_1 = load_data(args.test_file)
-    param = {'max_depth':8, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
-    num_round = 300 # 循环次数
-    test_data_1 = train_test(train_data_1, test_data_1,class_info, [], param, num_round)
+    param = {'max_depth': 8, 'eta': 0.5, 'eval_metric': 'merror',
+             'silent': 1, 'objective': 'multi:softmax', 'num_class': 0}  # 参数
+    num_round = 5  # 循环次数
+    test_data_1 = train_test(train_data_1, test_data_1,
+                             class_info, [], param, num_round)
 
     for key_1 in class_info.keys():
         train_data_2 = get_class_data(train_leveled_data, [key_1])
-        test_data_2 = get_label_data(test_data_1, [key_1])     
-        param = {'max_depth':7, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
-        num_round = 200 # 循环次数
-        test_data_2 = train_test(train_data_2, test_data_2, class_info, [key_1], param, num_round)
+        test_data_2 = get_label_data(test_data_1, [key_1])
+        param = {'max_depth': 7, 'eta': 0.5, 'eval_metric': 'merror',
+                 'silent': 1, 'objective': 'multi:softmax', 'num_class': 0}  # 参数
+        num_round = 200  # 循环次数
+        test_data_2 = train_test(train_data_2, test_data_2, class_info, [
+                                 key_1], param, num_round)
 
         for key_2 in class_info[key_1].keys():
             train_data_3 = get_class_data(train_leveled_data, [key_1, key_2])
             test_data_3 = get_label_data(test_data_2, [key_1, key_2])
-            param = {'max_depth':6, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
-            num_round = 50 # 循环次数
-            test_data_3 = train_test(train_data_3, test_data_3, class_info, [key_1, key_2], param, num_round)
+            param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror',
+                     'silent': 1, 'objective': 'multi:softmax', 'num_class': 0}  # 参数
+            num_round = 50  # 循环次数
+            test_data_3 = train_test(train_data_3, test_data_3, class_info, [
+                                     key_1, key_2], param, num_round)
             finall_test += test_data_3
-    
-    return finall_test 
+
+    return finall_test
 
 
 def test(test_result):
@@ -143,15 +150,15 @@ def test(test_result):
     label = np.array(label)
 
     score = f1_score(predict[:, 0], label[:, 0], average='macro')
-    print('cate1_acc: ', np.mean(predict[:, 0]==label[:, 0]))
+    print('cate1_acc: ', np.mean(predict[:, 0] == label[:, 0]))
     print('cate1_F1 score: ', score)
 
     score = f1_score(predict[:, 1], label[:, 1], average='macro')
-    print('cate2_acc: ', np.mean(predict[:, 1]==label[:, 1]))
+    print('cate2_acc: ', np.mean(predict[:, 1] == label[:, 1]))
     print('cate2_F1 score: ', score)
 
     score = f1_score(predict[:, 2], label[:, 2], average='macro')
-    print('cate3_acc: ', np.mean(predict[:, 2]==label[:, 2]))
+    print('cate3_acc: ', np.mean(predict[:, 2] == label[:, 2]))
     print('cate3_F1 score: ', score)
 
 
@@ -159,16 +166,18 @@ if __name__ == '__main__':
     parser = argparse.ArgumentParser()
     parser.add_argument('train_file', type=str, help='Training Data file')
     parser.add_argument('test_file', type=str, help='Testing data file')
-    parser.add_argument('class_info', type=str, help='word to idx file, which has deleted the uncommonly uesd words')
+    parser.add_argument('class_info', type=str,
+                        help='word to idx file, which has deleted the uncommonly uesd words')
     args = parser.parse_args()
-    
+
     test_result = main(args)
     test(test_result)
     with open("submit.txt", "w") as f:
         f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
         for x in test_result:
             # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
-            f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
+            f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7]) +
+                    '\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
 
     # finall = []
     # with open("submit.txt", 'r') as f:
@@ -184,6 +193,4 @@ if __name__ == '__main__':
     # with open("submit_2.txt", 'w') as f:
     #     f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
     #     for line in finall:
-    #         f.write(line) 
-    
-
+    #         f.write(line)

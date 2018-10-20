@@ -16,9 +16,9 @@ def load_dataset(args):
                       tokenize=lambda x: x.split(','), batch_first=True)
     LABEL = [data.Field(sequential=False, use_vocab=True,
                         unk_token=None) for _ in range(3)]
-    ID = data.Field(sequential=True, use_vocab=False)
+    ID = data.Field(sequential=False, use_vocab=True)
 
-    datafields = [('item_id', None),  # 我们不会需要id，所以我们传入的filed是None
+    datafields = [('item_id', ID),  # 我们不会需要id，所以我们传入的filed是None
                   ('title_chars', TEXT), ('title_words', TEXT),
                   ('disc_chars', TEXT), ('disc_words', TEXT),
                   ('cate1_id', LABEL[0]), ('cate2_id', LABEL[1]),
@@ -41,6 +41,7 @@ def load_dataset(args):
         'embedding/embedding.txt', cache='embedding/vec_cache/'))
     for L in LABEL:
         L.build_vocab(train_data, valid_data)
+    ID.build_vocab(test_data)
 
     train_iter, valid_iter = data.BucketIterator.splits(
         (train_data, valid_data),
@@ -62,5 +63,4 @@ def load_dataset(args):
         train=False,
         device=args.device)
 
-    return train_iter, valid_iter, test_iter, TEXT, LABEL
-
+    return train_iter, valid_iter, test_iter, TEXT, LABEL, ID
