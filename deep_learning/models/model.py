@@ -18,7 +18,7 @@ class TextCNN(nn.Module):
         #     [Conv(embedding_dim, c, 3, 1, 1, dim=1, numblocks=1) for _ in range(3)])
         self.lstm = nn.ModuleList(
             [nn.LSTM(embedding_dim, c, batch_first=True, bidirectional=True) for _ in range(3)])
-        #self.lns = nn.ModuleList([nn.LayerNorm(c) for _ in range(3)])
+        # self.lns = nn.ModuleList([nn.LayerNorm(2*c) for _ in range(3)])
         self.fcs = nn.ModuleList(
             [nn.Linear(2*c, len(LABEL[i].vocab)) for i in range(len(LABEL))])
         self._initialize_weights()

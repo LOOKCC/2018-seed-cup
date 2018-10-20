@@ -6,6 +6,7 @@ import torch
 import argparse
 import pickle
 import torch.nn.functional as F
+import numpy as np
 from torch import nn, optim
 from datetime import datetime
 from sklearn.metrics import f1_score, accuracy_score
@@ -47,13 +48,19 @@ class CateManager(object):
             # cate_out[1] = cate_out[1] * torch.mm(F.softmax(cate_out[0]), self.cate1to2)
             # cate_out[2] = cate_out[2] * torch.mm(F.softmax(cate_out[1]), self.cate2to3)
             if label is not None:
-                cate_out[1] = cate_out[1] * (self.cate1to2[label[0]]*101-100)
-                cate_out[2] = cate_out[2] * (self.cate2to3[label[1]]*101-100)
+                cate_out[1][np.where(self.cate1to2[label[0]] == 0)] = -100
+                cate_out[2][np.where(self.cate2to3[label[1]] == 0)] = -100
+                # cate_out[1] = cate_out[1] * (self.cate1to2[label[0]]*101-100)
+                # cate_out[2] = cate_out[2] * (self.cate2to3[label[1]]*101-100)
             else:
-                cate_out[1] = cate_out[1] * \
-                    (self.cate1to2[cate_out[0].max(1)[1]]*101-100)
-                cate_out[2] = cate_out[2] * \
-                    (self.cate2to3[cate_out[1].max(1)[1]]*101-100)
+                cate_out[1][np.where(
+                    self.cate1to2[cate_out[0].max(1)[1]] == 0)] = -100
+                cate_out[2][np.where(
+                    self.cate2to3[cate_out[1].max(1)[1]] == 0)] = -100
+                # cate_out[1] = cate_out[1] * \
+                #     (self.cate1to2[cate_out[0].max(1)[1]]
+                # cate_out[2] = cate_out[2] * \
+                #     (self.cate2to3[cate_out[1].max(1)[1]]*101-100)
         return cate_out
 
 
@@ -62,7 +69,15 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
     device = torch.device(args.device)
     model = TextCNN(TEXT, LABEL, dropout=args.dropout,
                     freeze=args.freeze).to(device)
-    criterion = [nn.CrossEntropyLoss().to(device) for _ in range(len(LABEL))]
+    weights = []
+    for i in range(len(LABEL)):
+        freqs = LABEL[i].vocab.freqs
+        itos = LABEL[i].vocab.itos
+        num = sum(freqs.values())
+        weights.append(torch.Tensor(
+            [num/freqs[itos[j]]/len(freqs) for j in range(len(freqs))]))
+    criterion = [nn.CrossEntropyLoss().to(device)
+                 for i in range(len(LABEL))]
     start_epoch = 0
 
     parameters = [x for x in model.parameters() if x.requires_grad == True]
