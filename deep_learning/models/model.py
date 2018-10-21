@@ -16,8 +16,13 @@ class TextCNN(nn.Module):
         self.embedding = nn.Embedding(len(TEXT.vocab), embedding_dim)
         # self.convs = nn.ModuleList(
         #     [Conv(embedding_dim, c, 3, 1, 1, dim=1, numblocks=1) for _ in range(3)])
+        
         self.lstm = nn.ModuleList(
             [nn.LSTM(embedding_dim, c, batch_first=True, bidirectional=True) for _ in range(3)])
+        #self.lns = nn.ModuleList([nn.LayerNorm(c) for _ in range(3)])
+        
+        self.gru = nn.ModuleList(
+            [nn.GRU(embedding_dim, c, batch_first=True, bidirectional=True) for _ in range(3)])
         #self.lns = nn.ModuleList([nn.LayerNorm(c) for _ in range(3)])
         self.fcs = nn.ModuleList(
             [nn.Linear(2*c, len(LABEL[i].vocab)) for i in range(len(LABEL))])
@@ -28,7 +33,7 @@ class TextCNN(nn.Module):
 
     def forward(self, x, training=True):
         x = self.embedding(x)
-        x = [self.lstm[i](x)[0].permute(0, 2, 1).contiguous()
+        x = [self.gru[i](x)[0].permute(0, 2, 1).contiguous()
              for i in range(3)]  # [(N, Co, W), ...]*len(Ks)
         x = [F.max_pool1d(x[i], x[i].size(2)).squeeze(2)
              for i in range(3)]  # [(N, Co), ...]*len(Ks)

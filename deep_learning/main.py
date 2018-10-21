@@ -1,114 +1,233 @@
+#!/usr/bin/env python3
+# _*_ coding: utf-8 _*_
+
 import os
-import time
-import load_data
 import torch
+import argparse
+import pickle
 import torch.nn.functional as F
-from torch.autograd import Variable
-import torch.optim as optim
-import numpy as np
-from models.LSTM import LSTMClassifier
+from torch import nn, optim
+from datetime import datetime
+from sklearn.metrics import f1_score, accuracy_score
 
-TEXT, vocab_size, word_embeddings, train_iter, valid_iter, test_iter = load_data.load_dataset()
+from load_data import load_dataset
+from models.model import TextCNN
 
-def clip_gradient(model, clip_value):
-    params = list(filter(lambda p: p.grad is not None, model.parameters()))
-    for p in params:
-        p.grad.data.clamp_(-clip_value, clip_value)
-    
-def train_model(model, train_iter, epoch):
-    total_epoch_loss = 0
-    total_epoch_acc = 0
-    model.cuda()
-    optim = torch.optim.Adam(filter(lambda p: p.requires_grad, model.parameters()))
-    steps = 0
-    model.train()
-    for idx, batch in enumerate(train_iter):
-        text = batch.text[0]
-        target = batch.label
-        target = torch.autograd.Variable(target).long()
-        if torch.cuda.is_available():
-            text = text.cuda()
-            target = target.cuda()
-        if (text.size()[0] is not 32):# One of the batch returned by BucketIterator has length different than 32.
-            continue
-        optim.zero_grad()
-        prediction = model(text)
-        loss = loss_fn(prediction, target)
-        num_corrects = (torch.max(prediction, 1)[1].view(target.size()).data == target.data).float().sum()
-        acc = 100.0 * num_corrects/len(batch)
-        loss.backward()
-        clip_gradient(model, 1e-1)
-        optim.step()
-        steps += 1
-        
-        if steps % 100 == 0:
-            print (f'Epoch: {epoch+1}, Idx: {idx+1}, Training Loss: {loss.item():.4f}, Training Accuracy: {acc.item(): .2f}%')
-        
-        total_epoch_loss += loss.item()
-        total_epoch_acc += acc.item()
-        
-    return total_epoch_loss/len(train_iter), total_epoch_acc/len(train_iter)
 
-def eval_model(model, val_iter):
-    total_epoch_loss = 0
-    total_epoch_acc = 0
-    model.eval()
-    with torch.no_grad():
-        for idx, batch in enumerate(val_iter):
-            text = batch.text[0]
-            if (text.size()[0] is not 32):
-                continue
-            target = batch.label
-            target = torch.autograd.Variable(target).long()
-            if torch.cuda.is_available():
-                text = text.cuda()
-                target = target.cuda()
-            prediction = model(text)
-            loss = loss_fn(prediction, target)
-            num_corrects = (torch.max(prediction, 1)[1].view(target.size()).data == target.data).sum()
-            acc = 100.0 * num_corrects/len(batch)
-            total_epoch_loss += loss.item()
-            total_epoch_acc += acc.item()
+class CateManager(object):
+    """
+    """
 
-    return total_epoch_loss/len(val_iter), total_epoch_acc/len(val_iter)
-	
+    def __init__(self, args, LABEL):
+        super(CateManager, self).__init__()
+        with open(os.path.join(args.root, 'class_info.pkl'), 'rb') as fp:
+            self.info = pickle.load(fp)
+        self.vocabs = [L.vocab for L in LABEL]
+        cate_num = [len(vocab) for vocab in self.vocabs]
+        device = torch.device(args.device)
+        self.cate1to2 = torch.zeros(cate_num[0], cate_num[1]).to(device)
+        self.cate2to3 = torch.zeros(cate_num[1], cate_num[2]).to(device)
+        self.merge = args.merge
+        for i in self.info:
+            idx1 = self.vocabs[0].stoi[str(i)]
+            idx2 = [self.vocabs[1].stoi[str(j)] for j in self.info[i].keys()]
+            self.cate1to2[idx1, idx2] = 1
+            for j in self.info[i]:
+                idx2 = self.vocabs[1].stoi[str(j)]
+                idx3 = [self.vocabs[2].stoi[str(k)]
+                        for k in self.info[i][j].keys()]
+                self.cate2to3[idx2, idx3] = 1
 
-learning_rate = 2e-5
-batch_size = 32
-output_size = 2
-hidden_size = 256
-embedding_length = 300
+    def merge_weights(self, cate_out, label=None):
+        if self.merge:
+            # cate_out[1] = cate_out[1] * self.cate1to2[cate_out[0].max(1)[1]]
+            # cate_out[2] = cate_out[2] * self.cate2to3[cate_out[1].max(1)[1]]
+            # cate_out[1] = cate_out[1] * torch.mm(cate_out[0], self.cate1to2)
+            # cate_out[2] = cate_out[2] * torch.mm(cate_out[1], self.cate2to3)
+            # cate_out[1] = cate_out[1] * torch.mm(F.softmax(cate_out[0]), self.cate1to2)
+            # cate_out[2] = cate_out[2] * torch.mm(F.softmax(cate_out[1]), self.cate2to3)
+            if label is not None:
+                cate_out[1] = cate_out[1] * (self.cate1to2[label[0]]*101-100)
+                cate_out[2] = cate_out[2] * (self.cate2to3[label[1]]*101-100)
+            else:
+                cate_out[1] = cate_out[1] * \
+                    (self.cate1to2[cate_out[0].max(1)[1]]*101-100)
+                cate_out[2] = cate_out[2] * \
+                    (self.cate2to3[cate_out[1].max(1)[1]]*101-100)
+        return cate_out
 
-model = LSTMClassifier(batch_size, output_size, hidden_size, vocab_size, embedding_length, word_embeddings)
-loss_fn = F.cross_entropy
 
-for epoch in range(10):
-    train_loss, train_acc = train_model(model, train_iter, epoch)
-    val_loss, val_acc = eval_model(model, valid_iter)
-    
-    print(f'Epoch: {epoch+1:02}, Train Loss: {train_loss:.3f}, Train Acc: {train_acc:.2f}%, Val. Loss: {val_loss:3f}, Val. Acc: {val_acc:.2f}%')
-    
-test_loss, test_acc = eval_model(model, test_iter)
-print(f'Test Loss: {test_loss:.3f}, Test Acc: {test_acc:.2f}%')
+def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
+    # get device
+    device = torch.device(args.device)
+    model = TextCNN(TEXT, LABEL, dropout=args.dropout,
+                    freeze=args.freeze).to(device)
+    criterion = [nn.CrossEntropyLoss().to(device) for _ in range(len(LABEL))]
+    start_epoch = 0
 
-''' Let us now predict the sentiment on a single sentence just for the testing purpose. '''
-test_sen1 = "This is one of the best creation of Nolan. I can say, it's his magnum opus. Loved the soundtrack and especially those creative dialogues."
-test_sen2 = "Ohh, such a ridiculous movie. Not gonna recommend it to anyone. Complete waste of time and money."
+    parameters = [x for x in model.parameters() if x.requires_grad == True]
+    optimizer = optim.Adam(parameters, lr=args.lr,
+                           weight_decay=args.weight_decay)
 
-test_sen1 = TEXT.preprocess(test_sen1)
-test_sen1 = [[TEXT.vocab.stoi[x] for x in test_sen1]]
+    if checkpoint is not None:
+        model.load_state_dict(checkpoint['model'])
+        optimizer.load_state_dict(checkpoint['optim'])
+        start_epoch = checkpoint['epoch']
 
-test_sen2 = TEXT.preprocess(test_sen2)
-test_sen2 = [[TEXT.vocab.stoi[x] for x in test_sen2]]
+    # train
+    model = model.train()
+    print('====   Training..   ====')
+    weight = (0.2, 0.3, 0.5)
+    for epoch in range(start_epoch, start_epoch+args.check_epoch):
+        print('----    Epoch: %d    ----' % (epoch, ))
+        loss_sum = 0
+        all_pred, all_label = [[], [], []], [[], [], []]
+        start_time = datetime.now()
+        for iter_num, batch in enumerate(train_iter):
+            label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
+            optimizer.zero_grad()
+            output = model(
+                torch.cat((batch.title_words, batch.disc_words), dim=1))
+            output = cate_manager.merge_weights(output, label)
+            loss = 0
+            for i in range(len(LABEL)):
+                loss += criterion[i](output[i], label[i]) * weight[i]
+                all_pred[i].extend(output[i].max(1)[1].tolist())
+                all_label[i].extend(label[i].tolist())
+            loss.backward()
+            optimizer.step()
+            loss_sum += loss.item()
+        print('Loss = {}  \ttime: {}'.format(loss_sum/(iter_num+1),
+                                             datetime.now()-start_time))
+        print(*['Cate{} F1 score: {}  \t'.format(i+1, f1_score(all_label[i],
+                                                               all_pred[i], average='weighted')) for i in range(len(LABEL))])
+        if args.snapshot_path is None:
+            snapshot_path = 'snapshot/model_{}.pth'.format(epoch)
+        checkpoint = {
+            'model': model.state_dict(),
+            'optim': optimizer.state_dict(),
+            'epoch': epoch+1
+        }
+        torch.save(checkpoint, snapshot_path)
+        print('Model saved in {}'.format(snapshot_path))
+    return checkpoint
 
-test_sen = np.asarray(test_sen1)
-test_sen = torch.LongTensor(test_sen)
-test_tensor = Variable(test_sen, volatile=True)
-test_tensor = test_tensor.cuda()
-model.eval()
-output = model(test_tensor, 1)
-out = F.softmax(output, 1)
-if (torch.argmax(out[0]) == 1):
-    print ("Sentiment: Positive")
-else:
-    print ("Sentiment: Negative")
+
+# @torch.no_grad()
+def evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint):
+    # get device
+    device = torch.device(args.device)
+    model = TextCNN(TEXT, LABEL, dropout=args.dropout,
+                    freeze=args.freeze).to(device)
+    if checkpoint is not None:
+        model.load_state_dict(checkpoint['model'])
+
+    # evaluate
+    model = model.eval()
+    print('====   Validing..   ====')
+    start_time = datetime.now()
+    all_pred, all_label = [[], [], []], [[], [], []]
+    for iter_num, batch in enumerate(valid_iter):
+        label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
+        output = model(
+            torch.cat((batch.title_words, batch.disc_words), dim=1), training=False)
+        output = cate_manager.merge_weights(output)
+        for i in range(len(output)):
+            all_pred[i].extend(output[i].max(1)[1].tolist())
+            all_label[i].extend(label[i].tolist())
+    print('time: {}'.format(datetime.now()-start_time))
+    print(*['Cate{} F1 score: {}  \t'.format(i+1, f1_score(all_label[i],
+                                                           all_pred[i], average='weighted')) for i in range(len(LABEL))])
+
+
+# @torch.no_grad()
+def test(args, test_iter, TEXT, LABEL, ID, cate_manager, checkpoint):
+    # get device
+    device = torch.device(args.device)
+    model = TextCNN(TEXT, LABEL, dropout=args.dropout,
+                    freeze=args.freeze).to(device)
+    if checkpoint is not None:
+        model.load_state_dict(checkpoint['model'])
+
+    # evaluate
+    model = model.eval()
+    print('====    Testing..   ====')
+    start_time = datetime.now()
+    all_pred, ids = [[], [], []], []
+    for iter_num, batch in enumerate(test_iter):
+        ids.extend(batch.item_id.tolist())
+        output = model(
+            torch.cat((batch.title_words, batch.disc_words), dim=1), training=False)
+        output = cate_manager.merge_weights(output)
+        for i in range(len(output)):
+            all_pred[i].extend(output[i].max(1)[1].tolist())
+    print('time: {}'.format(datetime.now()-start_time))
+    with open('../data/out.txt', 'w') as fp:
+        fp.write('item_id\tcate1_id\tcate2_id\tcate3_id\n')
+        for i in range(len(all_pred[0])):
+            fp.write(ID.vocab.itos[ids[i]]+'\t')
+            fp.write(
+                '\t'.join([LABEL[j].vocab.itos[all_pred[j][i]] for j in range(3)]))
+            fp.write('\n')
+    print('Result saved in ../data/out.txt')
+
+
+if __name__ == '__main__':
+    parser = argparse.ArgumentParser()
+    parser.add_argument('--root', default='../data',
+                        help='Path to dataset (default="../data")')
+    parser.add_argument('--device', default='cuda:0',
+                        help='Device to use (default="cuda:0")')
+    parser.add_argument('--snapshot', default=None,
+                        help='Path to save model to save (default="checkpoints/crnn.pth")')
+    parser.add_argument('--batch_size', type=int, default=32,
+                        help='Input batch size (default=128)')
+
+    parser.add_argument('--snapshot_path', default=None,
+                        help='Path to save model (default="snapshot/model_{epoch}.pth")')
+    parser.add_argument('--epoch_num', type=int, default=50,
+                        help='Number of epochs to train for (default=50)')
+    parser.add_argument('--check_epoch', type=int, default=5,
+                        help='Epoch to save and test (default=5)')
+    parser.add_argument('--lr', type=float, default=0.001,
+                        help='Learning rate for Optimizer (default=0.001)')
+    parser.add_argument('--weight_decay', type=float, default=0,
+                        help='Weight decay for Optimizer (default=0)')
+
+    parser.add_argument('--valid', action='store_true',
+                        help='Evaluate only once')
+    parser.add_argument('--test', action='store_true',
+                        help='Test only once')
+    parser.add_argument('--freeze', action='store_true',
+                        help='Freeze embedding layer or not')
+    parser.add_argument('--dropout', type=float, default=0,
+                        help='Rate of dropout (default=0)')
+    parser.add_argument('--merge', action='store_true',
+                        help='Merge probality of every level')
+    args = parser.parse_args()
+    print(args)
+
+    # load models, optimizer, start_iter
+    checkpoint = None
+
+    if args.valid and args.snapshot is None:
+        print('Please set the "snapshot" argument!')
+        exit(0)
+
+    if args.snapshot is not None and os.path.exists(args.snapshot):
+        print('Pre-trained model detected.\nLoading model...')
+        checkpoint = torch.load(args.snapshot)
+
+    train_iter, valid_iter, test_iter, TEXT, LABEL, ID = load_dataset(args)
+    cate_manager = CateManager(args, LABEL)
+    for i in range(args.epoch_num//args.check_epoch):
+        if not args.valid and not args.test:
+            checkpoint = train(args, train_iter, TEXT, LABEL,
+                               cate_manager, checkpoint=checkpoint)
+            evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint)
+        elif args.valid:
+            evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint)
+            break
+        else:
+            test(args, test_iter, TEXT, LABEL, ID, cate_manager, checkpoint)
+            break
