@@ -164,14 +164,14 @@ if __name__ == '__main__':
     
     test_result = main(args)
     test(test_result)
-    with open("submit.txt", "w") as f:
+    with open("../output/submit.txt", "w") as f:
         f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
         for x in test_result:
             # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
             f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
 
     # finall = []
-    # with open("submit.txt", 'r') as f:
+    # with open("../output/submit.txt", 'r') as f:
     #     f.readline()
     #     lines_sub = f.readlines()
     # with open(args.test_file, 'r') as f:
@@ -181,7 +181,7 @@ if __name__ == '__main__':
     #     for sub_line in lines_sub:
     #         if test_line[0:33] == sub_line[0:33]:
     #             finall.append(sub_line)
-    # with open("submit_2.txt", 'w') as f:
+    # with open("../output/submit_2.txt", 'w') as f:
     #     f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
     #     for line in finall:
     #         f.write(line) 
