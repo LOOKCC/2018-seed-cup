@@ -1,8 +1,8 @@
 import pickle
 
-train_path = '../../data/category_prediction_data_a/train_a.txt'
-valid_path = '../../data/category_prediction_data_a/valid_a.txt'
-test_path = '../../data/category_prediction_data_a/test_a.txt'
+train_path = '../../data/train_a.txt'
+valid_path = '../../data/valid_a.txt'
+test_path = '../../data/test_a.txt'
 
 with open('./word2idx.pkl', 'rb') as fp:
     word2idx = pickle.load(fp)

@@ -24,7 +24,7 @@ embedding_dim = 512
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 test_feature_path = './preproc/test_words.pkl'
-test_path = '../data/category_prediction_data_a/test_a.txt'
+test_path = '../data/test_a.txt'
 
 
 def test(clf1, clf2, clf3, dataloader):

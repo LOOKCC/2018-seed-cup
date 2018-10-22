@@ -1,9 +1,9 @@
 from gensim.models import Word2Vec
 import argparse
 
-train_path = '../../data/category_prediction_data_a/train_a.txt'
-valid_path = '../../data/category_prediction_data_a/valid_a.txt'
-test_path = '../../data/category_prediction_data_a/test_a.txt'
+train_path = '../../data/train_a.txt'
+valid_path = '../../data/valid_a.txt'
+test_path = '../../data/test_a.txt'
 
 
 # 0: id, 1:ch_title, 2: word_title, 3: ch_descrip, 4: word_descrip

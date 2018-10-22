@@ -1,7 +1,7 @@
 import pickle
 
-train_path = '../../data/category_prediction_data_a/train_a.txt'
-valid_path = '../../data/category_prediction_data_a/valid_a.txt'
+train_path = '../../data/train_a.txt'
+valid_path = '../../data/valid_a.txt'
 save_path = './cate2idx.pkl'
 
 label2idx = [{}, {}, {}]
