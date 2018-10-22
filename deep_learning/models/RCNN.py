@@ -6,10 +6,10 @@ from torch.autograd import Variable
 from .conv import Conv
 
 
-class Inception(nn.Module):
+class RCNN(nn.Module):
 
     def __init__(self, TEXT, LABEL, dropout=0.2, freeze=True):
-        super(Inception, self).__init__()
+        super(RCNN, self).__init__()
         cnn_out = 32
         rnn_out = 64
         self.dropout = dropout
@@ -27,7 +27,7 @@ class Inception(nn.Module):
             [Conv(embedding_dim, cnn_out, 5, 1, 2, dim=1, numblocks=1) for _ in range(3)])
 
         self.fcs = nn.ModuleList(
-            [nn.Linear(2*c, len(LABEL[i].vocab)) for i in range(len(LABEL))])
+            [nn.Linear(cnn_out+rnn_out, len(LABEL[i].vocab)) for i in range(len(LABEL))])
         self._initialize_weights()
         self.embedding.weight.data.copy_(TEXT.vocab.vectors)
         if freeze:
@@ -35,9 +35,10 @@ class Inception(nn.Module):
 
     def forward(self, x, training=True):
         x = self.embedding(x)
-        print(x.shape)
-        # x (32, ?, 256)
+
+        x = x.permvimute(0, 2, 1)        
         x = [self.conv_3[i](x) for i in range(3)]  # [(N, Co, W), ...]*len(Ks)
+        x = x.permvimute(0, 2, 1)        
 
         x = [self.lstm[i](x)[0].permvimute(0, 2, 1).contiguous()
             for i in range(3)]  # [(N, Co, W), ...]*len(Ks)

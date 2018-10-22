@@ -11,7 +11,7 @@ from datetime import datetime
 from sklearn.metrics import f1_score, accuracy_score
 
 from load_data import load_dataset
-from models.model import TextCNN
+from models.RCNN import RCNN
 
 
 class CateManager(object):
@@ -60,7 +60,7 @@ class CateManager(object):
 def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
     # get device
     device = torch.device(args.device)
-    model = TextCNN(TEXT, LABEL, dropout=args.dropout,
+    model = RCNN(TEXT, LABEL, dropout=args.dropout,
                     freeze=args.freeze).to(device)
     criterion = [nn.CrossEntropyLoss().to(device) for _ in range(len(LABEL))]
     start_epoch = 0
