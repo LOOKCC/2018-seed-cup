@@ -34,7 +34,28 @@ python xgb.py --train_file=../data/train_a.txt --test_file=../data/test_a.txt --
 
 ## swem运行步骤
 ```
+cd swem/preproc
+# preproc data
+python word_embedding.py -w 1
+python word2vec.py
+python word2idx.py
+python cate2idx.py
+python data2idx.py
+python make_mask.py
 
+cd ..
+# train models
+python train.py -m 1 --h_d 64 -d --ckpt ./checkpoint/cate1_classifier.pth
+python train.py -m 2 --h_d 128 -d --ckpt ./checkpoint/cate2_classifier.pth
+python train.py -m 3 --h_d 256 -d --ckpt ./checkpoint/cate3_classifier.pth
+# if resuming training
+python train.py -m 1 --ckpt ./checkpoint/cate1_classifier.pth -r
+python train.py -m 2 --ckpt ./checkpoint/cate2_classifier.pth -r
+python train.py -m 3 --ckpt ./checkpoint/cate3_classifier.pth -r
+# eval
+python eval.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate2_classifier.pth --clf3 ./checkpoint/cate3_classifier.pth
+# test and get submit.txt
+python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate2_classifier.pth --clf3 ./checkpoint/cate3_classifier.pth --save_path submit.txt
 ```
 
 <br><br><br>

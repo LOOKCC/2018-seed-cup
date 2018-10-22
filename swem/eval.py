@@ -7,10 +7,10 @@ import argparse
 
 from sklearn.metrics import f1_score
 
-from .models.cate1_classifier import Cate1Classifier
-from .models.cate2_classifier import Cate2Classifier
-from .models.cate3_classifier import Cate3Classifier
-from .utils.dataset import TrainDataset, padding
+from models.cate1_classifier import Cate1Classifier
+from models.cate2_classifier import Cate2Classifier
+from models.cate3_classifier import Cate3Classifier
+from utils.dataset import TrainDataset, padding
 
 WORDS_CNT = 34835
 CHARS_CNT = 3939
