@@ -35,10 +35,11 @@ class Inception(nn.Module):
 
     def forward(self, x, training=True):
         x = self.embedding(x)
-
+        print(x.shape)
+        # x (32, ?, 256)
         x = [self.conv_3[i](x) for i in range(3)]  # [(N, Co, W), ...]*len(Ks)
 
-        x = [self.lstm[i](x)[0].permute(0, 2, 1).contiguous()
+        x = [self.lstm[i](x)[0].permvimute(0, 2, 1).contiguous()
             for i in range(3)]  # [(N, Co, W), ...]*len(Ks)
 
         x = [F.max_pool1d(x[i], x[i].size(2)).squeeze(2)
