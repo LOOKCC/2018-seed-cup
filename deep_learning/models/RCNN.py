@@ -40,7 +40,7 @@ class RCNN(nn.Module):
         x = [self.conv_3[i](x) for i in range(3)]  # [(N, Co, W), ...]*len(Ks)
         x = x.permvimute(0, 2, 1)        
 
-        x = [self.lstm[i](x)[0].permvimute(0, 2, 1).contiguous()
+        x = [self.lstm[i](x)[0].permute(0, 2, 1).contiguous()
             for i in range(3)]  # [(N, Co, W), ...]*len(Ks)
 
         x = [F.max_pool1d(x[i], x[i].size(2)).squeeze(2)

@@ -23,10 +23,19 @@
 
 ### 运行步骤
 
+## xgboost运行步骤
+```
+cd data_mining
+# for train and valid
+python xgb.py --train_file=../data/train_a.txt --test_file=../data/valid_a.txt --class_info=../data/class_info.pkl
+# for train and test, the ordered result is in submit_ordered.txt
+python xgb.py --train_file=../data/train_a.txt --test_file=../data/test_a.txt --class_info=../data/class_info.pkl --test
+```
+
+## swem运行步骤
 ```
 
 ```
-
 
 <br><br><br>
 
@@ -55,7 +64,24 @@
         load_data.py
         mining.py
         xgb.py
-    utils
+    swem
+        eval.py
+        test.py
+        train.py
+        utils
+            dataset.py
+        preproc
+            cate2idx.py
+            data2idx.py
+            make_mask.py
+            word2idx.py
+            word2vec.py
+            word_embedding.py
+        models
+            cate1_classifier.py
+            cate2_classifier.py
+            cate3_classifier.py
+            represent_layer.py
     output
     README.md
 ```
