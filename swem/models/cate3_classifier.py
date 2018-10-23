@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from sklearn.metrics import f1_score
 
 from .represent_layer import SwemCat
+from utils.timer import timer
 
 WORDS_CNT = 34835
 CHARS_CNT = 3939
@@ -22,25 +23,22 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class Cate3Classifier(nn.Module):
     def __init__(self, args, word2vec=None, mask2=None):
         super(Cate3Classifier, self).__init__()
-        self.swem_layer = SwemCat(args, word2vec)
+        self.swem_layer = SwemCat(word2vec)
         self.fc = nn.Linear(embedding_dim*4, args.h_d)
         self.clf = nn.Linear(args.h_d, CATE3_CNT)
         self.bn = nn.BatchNorm1d(args.h_d)
         self.mask2 = mask2
 
     def forward(self, title, desc, t_len, d_len, cate2, mode=1):
-        batch_size = title.size(0)
-        swem_vec = torch.zeros((batch_size, embedding_dim*4), device=device)
-        for i in range(batch_size):
-            swem_vec[i] = self.swem_layer(title[i], desc[i], t_len[i], d_len[i], mode)
+        swem_vec = self.swem_layer(title, desc, t_len, d_len, mode)
         h = self.bn(self.fc(swem_vec))
         h = F.relu(h)
         output = self.clf(h)
-        for i in range(batch_size):
+        for i in range(title.size(0)):
             output[i, self.mask2[cate2[i]]] = -100
         return output
 
-
+@timer
 def train_epoch(epoch, model, dataloader, criterion, optimizer, args):
     model.train()
     print('Epoch', epoch)

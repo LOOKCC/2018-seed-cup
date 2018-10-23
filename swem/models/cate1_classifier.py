@@ -5,6 +5,7 @@ import torch.nn.functional as F
 from sklearn.metrics import f1_score
 
 from .represent_layer import SwemCat
+from utils.timer import timer
 
 WORDS_CNT = 34835
 CHARS_CNT = 3939
@@ -22,29 +23,20 @@ device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 class Cate1Classifier(nn.Module):
     def __init__(self, args, word2vec=None):
         super(Cate1Classifier, self).__init__()
-        self.swem_layer = SwemCat(args, word2vec)
+        self.swem_layer = SwemCat(word2vec)
         self.args = args
-        if args.h_d > 0:
-            self.fc = nn.Linear(embedding_dim*4, args.h_d)
-            self.clf = nn.Linear(args.h_d, CATE1_CNT)
-            self.bn = nn.BatchNorm1d(args.h_d)
-        else:
-            self.clf = nn.Linear(embedding_dim*4, CATE1_CNT)
+        self.fc = nn.Linear(embedding_dim*4, args.h_d)
+        self.clf = nn.Linear(args.h_d, CATE1_CNT)
+        self.bn = nn.BatchNorm1d(args.h_d)
 
     def forward(self, title, desc, t_len, d_len, mode=1):
-        batch_size = title.size(0)
-        swem_vec = torch.zeros((batch_size, embedding_dim*4), device=device)
-        for i in range(batch_size):
-            swem_vec[i] = self.swem_layer(title[i], desc[i], t_len[i], d_len[i], mode)
-        if self.args.h_d > 0:
-            h = self.bn(self.fc(swem_vec))
-            h = F.relu(h)
-            output = self.clf(h)
-        else:
-            output = self.clf(swem_vec)
+        swem_vec= self.swem_layer(title, desc, t_len, d_len, mode)
+        h = self.bn(self.fc(swem_vec))
+        h = F.relu(h)
+        output = self.clf(h)
         return output
 
-
+@timer
 def train_epoch(epoch, model, dataloader, criterion, optimizer, args):
     model.train()
     print('Epoch', epoch)

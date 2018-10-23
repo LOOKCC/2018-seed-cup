@@ -8,6 +8,8 @@ def make_vec():
     print('==> Saving vectors tensor in {}'.format(save_path))
     model = Word2Vec.load(model_path)
     vectors = torch.tensor(model.wv.vectors)
+    padding = torch.zeros((1, vectors.size(1)))
+    vectors = torch.cat([padding, vectors])
     torch.save(vectors, save_path)
 
 if __name__ == '__main__':

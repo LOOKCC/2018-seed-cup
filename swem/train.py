@@ -6,6 +6,7 @@ import torch.backends.cudnn as cudnn
 import pickle
 
 import argparse
+import time
 
 from utils.dataset import TrainDataset, padding
 
@@ -24,8 +25,8 @@ def parse_cmd():
     parser.add_argument('--batch_size', type=int, default=64, help='batch size, default=64')
     parser.add_argument('--lr', type=float, default=1e-3, help='learning rate, default=1e-3')
     parser.add_argument('--weight_decay', type=float, default=0, help='l2 weight decay, default=0')
-    parser.add_argument('-d', '--drop', action='store_true', help='drop some words in docs while training')
-    parser.add_argument('--drop_rate', type=float, default=0.2, help='rate of dropped words, default=0.2')
+    # parser.add_argument('-d', '--drop', action='store_true', help='drop some words in docs while training')
+    # parser.add_argument('--drop_rate', type=float, default=0.2, help='rate of dropped words, default=0.2')
     parser.add_argument('--h_d', type=int, default=128, help='hidden dim, default=128')
     parser.add_argument('--ckpt', required=True, help='load/save checkpoint path')
     args = parser.parse_args()
@@ -150,6 +151,7 @@ if __name__ == '__main__':
 
     for epoch in range(start_epoch, start_epoch+20):
         train_epoch(epoch, model, train_loader, criterion, optimizer, args)
+        delta_time = time.time() - start_time
         with torch.no_grad():
             best_score = eval_epoch(epoch, model, valid_loader, best_score, args)
         if torch.cuda.is_available():
