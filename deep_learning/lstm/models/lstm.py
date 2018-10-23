@@ -9,8 +9,7 @@ from .conv import Conv
 class LSTM(nn.Module):
 
     def __init__(self, hidden_dim, TEXT, LABEL, dropout=0.2, freeze=True):
-        super(TextCNN, self).__init__()
-        hidden_dim = 128
+        super(LSTM, self).__init__()
         self.dropout = dropout
         embedding_dim = TEXT.vocab.vectors.size(1)
         self.embedding = nn.Embedding(len(TEXT.vocab), embedding_dim)

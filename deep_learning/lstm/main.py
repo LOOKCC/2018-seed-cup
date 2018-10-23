@@ -61,7 +61,7 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
     # get device
     device = torch.device(args.device)
     model = Model(TEXT, LABEL, dropout=args.dropout,
-                 freeze=args.freeze).to(device)
+                  freeze=args.freeze).to(device)
     start_epoch = 0
 
     parameters = [x for x in model.parameters() if x.requires_grad == True]
@@ -89,7 +89,7 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
             result = cate_manager.merge_weights(result)
             for i in range(len(LABEL)):
                 for j in range(len(output)):
-                    loss = F.cross_entropy(output[i], label[i])
+                    loss = F.cross_entropy(output[j][i], label[i])
                     loss.backward(retain_graph=True if i < 2 else False)
                     loss_sum += loss.item()
                 all_pred[i].extend(result[i].max(1)[1].tolist())
@@ -115,8 +115,8 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
 def evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint):
     # get device
     device = torch.device(args.device)
-    model = TextCNN(TEXT, LABEL, dropout=args.dropout,
-                    freeze=args.freeze).to(device)
+    model = Model(TEXT, LABEL, dropout=args.dropout,
+                  freeze=args.freeze).to(device)
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model'])
 
@@ -127,8 +127,7 @@ def evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint):
     all_pred, all_label = [[], [], []], [[], [], []]
     for iter_num, batch in enumerate(valid_iter):
         label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
-        output, result = model(
-            torch.cat((batch.title_words, batch.disc_words), dim=1), training=False)
+        output, result = model(batch, training=False)
         result = cate_manager.merge_weights(result)
         for i in range(len(result)):
             all_pred[i].extend(result[i].max(1)[1].tolist())
@@ -142,8 +141,8 @@ def evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint):
 def test(args, test_iter, TEXT, LABEL, ID, cate_manager, checkpoint):
     # get device
     device = torch.device(args.device)
-    model = TextCNN(TEXT, LABEL, dropout=args.dropout,
-                    freeze=args.freeze).to(device)
+    model = Model(TEXT, LABEL, dropout=args.dropout,
+                  freeze=args.freeze).to(device)
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model'])
 
@@ -154,20 +153,19 @@ def test(args, test_iter, TEXT, LABEL, ID, cate_manager, checkpoint):
     all_pred, ids = [[], [], []], []
     for iter_num, batch in enumerate(test_iter):
         ids.extend(batch.item_id.tolist())
-        output, result = model(
-            torch.cat((batch.title_words, batch.disc_words), dim=1), training=False)
+        output, result = model(batch, training=False)
         result = cate_manager.merge_weights(result)
         for i in range(len(result)):
             all_pred[i].extend(result[i].max(1)[1].tolist())
     print('time: {}'.format(datetime.now()-start_time))
-    with open('../data/out.txt', 'w') as fp:
+    with open('../../data/out.txt', 'w') as fp:
         fp.write('item_id\tcate1_id\tcate2_id\tcate3_id\n')
         for i in range(len(all_pred[0])):
             fp.write(ID.vocab.itos[ids[i]]+'\t')
             fp.write(
                 '\t'.join([LABEL[j].vocab.itos[all_pred[j][i]] for j in range(3)]))
             fp.write('\n')
-    print('Result saved in ../data/out.txt')
+    print('Result saved in ../../data/out.txt')
 
 
 if __name__ == '__main__':
