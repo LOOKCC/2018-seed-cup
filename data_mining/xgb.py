@@ -27,11 +27,9 @@ def get_train_words(train_data):
 
 def process(data, args, train_words, label_dict, cate):
     title = []
-    dis = []
     label = []
     for line in data:
         temp = [x for x in line[2] if x in train_words]
-        # title.append(' '.join(temp))
         temp += [x for x in line[4] if x in train_words]
         title.append(' '.join(temp))
         label.append(label_dict[line[cate]])
@@ -39,22 +37,26 @@ def process(data, args, train_words, label_dict, cate):
 
 def process_test(data, args, train_words):
     title = []
-    dis = []
     for line in data:
         temp = [x for x in line[2] if x in train_words]
-        # title.append(' '.join(temp))
         temp += [x for x in line[4] if x in train_words]
         title.append(' '.join(temp))
     return title
 
 
-def get_label_data(test_data, keys):
+def get_label_data(test_data, keys, args):
+    if args.test:
+        cate1 = 5
+        cate2 = 6
+    else:
+        cate1 = 8
+        cate2 = 9
     if len(keys) == 0:
         return test_data
     elif len(keys) == 1:
-        return [x for x in test_data if x[8] == keys[0]]
+        return [x for x in test_data if x[cate1] == keys[0]]
     elif len(keys) == 2:
-        return [x for x in test_data if (x[8] == keys[0] and x[9] == keys[1])]        
+        return [x for x in test_data if (x[cate1] == keys[0] and x[cate2] == keys[1])]        
 
 
 def train_test(train_data, test_data, class_info, keys, param, num_round):
@@ -80,22 +82,14 @@ def train_test(train_data, test_data, class_info, keys, param, num_round):
     test_title = process_test(test_data, args, train_words)
     param['num_class'] = len(label2idx)
     vectorizer = CountVectorizer()
-    tfidftransformer = TfidfTransformer()
-
+    # tfidftransformer = TfidfTransformer()
     title = vectorizer.fit_transform(train_title)
-    # dis = vectorizer.fit_transform(train_dis)
-    # tfidf_dis = tfidftransformer.fit_transform(dis)
-    # tfidf = hstack((title, tfidf_dis))
-
     dtrain = xgb.DMatrix(title, label=train_label)
     evallist  = [(dtrain,'train')]
     bst = xgb.train(param, dtrain, num_round, evallist)
     print("cate1 train OK")
 
     title = vectorizer.transform(test_title)
-    # dis = vectorizer.transform(test_dis)
-    # tfidf_dis = tfidftransformer.transform(dis)
-    # tfidf = hstack((title, tfidf_dis))
     dtest = xgb.DMatrix(title)
     pred = bst.predict(dtest)
 
@@ -111,8 +105,6 @@ def main(args):
     train_leveled_data, _ = load_leveled_data(args.train_file)
     train_data_1 = get_class_data(train_leveled_data, [])
 
-    # test_leveled_data, _ = load_leveled_data(args.test_file)
-    # test_data_1 = get_class_data(test_leveled_data, [])
     test_data_1 = load_data(args.test_file)
     param = {'max_depth':8, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
     num_round = 300 # 循环次数
@@ -120,14 +112,14 @@ def main(args):
 
     for key_1 in class_info.keys():
         train_data_2 = get_class_data(train_leveled_data, [key_1])
-        test_data_2 = get_label_data(test_data_1, [key_1])     
+        test_data_2 = get_label_data(test_data_1, [key_1], args)     
         param = {'max_depth':7, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
         num_round = 300 # 循环次数
         test_data_2 = train_test(train_data_2, test_data_2, class_info, [key_1], param, num_round)
 
         for key_2 in class_info[key_1].keys():
             train_data_3 = get_class_data(train_leveled_data, [key_1, key_2])
-            test_data_3 = get_label_data(test_data_2, [key_1, key_2])
+            test_data_3 = get_label_data(test_data_2, [key_1, key_2], args)
             param = {'max_depth':7, 'eta':0.5, 'eval_metric':'merror', 'silent':1, 'objective':'multi:softmax', 'num_class':0}  # 参数
             num_round = 400 # 循环次数
             test_data_3 = train_test(train_data_3, test_data_3, class_info, [key_1, key_2], param, num_round)
@@ -136,9 +128,9 @@ def main(args):
     return finall_test 
 
 
-def test(test_result):
-    predict = [x[5:8] for x in test_result]
-    label = [x[8:11] for x in test_result]
+def val(val_result):
+    predict = [x[5:8] for x in val_result]
+    label = [x[8:11] for x in val_result]
     predict = np.array(predict)
     label = np.array(label)
 
@@ -157,33 +149,37 @@ def test(test_result):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('train_file', type=str, help='Training Data file')
-    parser.add_argument('test_file', type=str, help='Testing data file')
-    parser.add_argument('class_info', type=str, help='word to idx file, which has deleted the uncommonly uesd words')
+    parser.add_argument('--train_file', type=str, help='Training Data file')
+    parser.add_argument('--test_file', type=str, help='Testing data file')
+    parser.add_argument('--class_info', type=str, help='word to idx file, which has deleted the uncommonly uesd words')
+    parser.add_argument('--test', action='store_true', help='train or test')
+
     args = parser.parse_args()
     
-    test_result = main(args)
-    test(test_result)
-    with open("../output/submit.txt", "w") as f:
-        f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
-        for x in test_result:
-            # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
-            f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
-
-    # finall = []
-    # with open("../output/submit.txt", 'r') as f:
-    #     f.readline()
-    #     lines_sub = f.readlines()
-    # with open(args.test_file, 'r') as f:
-    #     f.readline()
-    #     lines_test = f.readlines()
-    # for test_line in lines_test:
-    #     for sub_line in lines_sub:
-    #         if test_line[0:33] == sub_line[0:33]:
-    #             finall.append(sub_line)
-    # with open("../output/submit_2.txt", 'w') as f:
-    #     f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
-    #     for line in finall:
-    #         f.write(line) 
-    
+    result = main(args)
+    if not args.test:
+        val(result)
+    else:
+        with open("../output/submit.txt", "w") as f:
+            f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
+            for x in result:
+                f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
+                # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
+        # make the order the same with test_file
+        finall = []
+        with open("../output/submit.txt", 'r') as f:
+            f.readline()
+            lines_sub = f.readlines()
+        with open(args.test_file, 'r') as f:
+            f.readline()
+            lines_test = f.readlines()
+        for test_line in lines_test:
+            for sub_line in lines_sub:
+                if test_line[0:33] == sub_line[0:33]:
+                    finall.append(sub_line)
+        with open("../output/submit_ordered.txt", 'w') as f:
+            f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
+            for line in finall:
+                f.write(line) 
+        
 
