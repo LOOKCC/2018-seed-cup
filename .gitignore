@@ -11,3 +11,4 @@ log/
 *.7z
 *.pth
 *.pkl
+*.pt
