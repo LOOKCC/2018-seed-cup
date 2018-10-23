@@ -38,7 +38,7 @@ def load_dataset(args):
         fields=datafields[:5])
 
     TEXT.build_vocab(train_data, valid_data, test_data, vectors=Vectors(
-        'embedding/embedding.txt', cache='embedding/vec_cache/'))
+        'embedding/word_embedding_512.txt', cache='embedding/vec_cache/'))
     for L in LABEL:
         L.build_vocab(train_data, valid_data)
     ID.build_vocab(test_data)
@@ -47,7 +47,7 @@ def load_dataset(args):
         (train_data, valid_data),
         batch_size=args.batch_size,
         sort_key=lambda x: len(x.disc_words),
-        sort=True,
+        sort=False,
         repeat=False,
         shuffle=True,
         sort_within_batch=False,
@@ -56,6 +56,7 @@ def load_dataset(args):
     test_iter = data.BucketIterator(
         test_data,
         batch_size=args.batch_size,
+        sort_key=lambda x: len(x.disc_words),
         sort=False,
         repeat=False,
         shuffle=False,

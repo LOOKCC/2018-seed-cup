@@ -11,7 +11,7 @@ from datetime import datetime
 from sklearn.metrics import f1_score, accuracy_score
 
 from load_data import load_dataset
-from models.model import TextCNN
+from models.LSTM import TextCNN
 
 
 class CateManager(object):
@@ -77,7 +77,7 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
     # train
     model = model.train()
     print('====   Training..   ====')
-    weight = (0.1, 0.3, 0.6)
+    weight = (0.2, 0.3, 0.5)
     for epoch in range(start_epoch, start_epoch+args.check_epoch):
         print('----    Epoch: %d    ----' % (epoch, ))
         loss_sum = 0
@@ -91,10 +91,11 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
             output = cate_manager.merge_weights(output, label)
             loss = 0
             for i in range(len(LABEL)):
-                loss += criterion[i](output[i], label[i]) * weight[i]
+                loss = criterion[i](output[i], label[i])
+                # loss += criterion[i](output[i], label[i]) * weight[i]
                 all_pred[i].extend(output[i].max(1)[1].tolist())
                 all_label[i].extend(label[i].tolist())
-            loss.backward()
+                loss.backward(retain_graph=True if i < 2 else False)
             optimizer.step()
             loss_sum += loss.item()
         print('Loss = {}  \ttime: {}'.format(loss_sum/(iter_num+1),

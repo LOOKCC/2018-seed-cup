@@ -3,7 +3,7 @@ import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
 from torch.autograd import Variable
-from .conv import Conv
+from .lstm import LSTM
 
 
 class LSTM(nn.Module):
