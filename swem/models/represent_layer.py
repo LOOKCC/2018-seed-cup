@@ -14,49 +14,44 @@ embedding_dim = 512
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-class Embedding(nn.Module):
-    def __init__(self, input_size, embedding_dim, args, embedding_weight=None):
-        super(Embedding, self).__init__()
-        self.embedding_dim = embedding_dim
-        self.embedding = nn.Embedding(input_size, embedding_dim)
-        self.args = args
-        if embedding_weight is not None:
-            self.embedding.weight = nn.Parameter(embedding_weight)
-
-    def forward(self, inputs, length, mode):
-        if length > 0:
-            inputs = inputs[:length]
-            if self.args.drop and mode and length > 10:
-                idx = torch.zeros(length.item()).uniform_()
-                return self.embedding(inputs[idx > self.args.drop_rate])
-            else:
-                return self.embedding(inputs)
-        else:
-            return torch.zeros((1, self.embedding_dim), device=device)
-
 
 class SwemCat(nn.Module):
-    def __init__(self, args, word2vec=None):
+    def __init__(self, word2vec=None):
         super(SwemCat, self).__init__()
-        self.word2vec = Embedding(WORDS_CNT, embedding_dim, args, word2vec)
+        self.word2vec = nn.Embedding(WORDS_CNT+1, embedding_dim, padding_idx=0)
+        if word2vec is not None:
+            self.word2vec.weight = nn.Parameter(word2vec)
+
 
     def forward(self, title, desc, t_len, d_len, mode):
-        title_vec = self.word2vec(title, t_len, mode)
-        desc_vec = self.word2vec(desc, d_len, mode)
-        output = torch.cat([self.swem_max(title_vec),
-                            self.swem_max(desc_vec),
-                            self.swem_avg(title_vec),
-                            self.swem_avg(desc_vec)], 1)
+        title_vec = self.word2vec(title)         # (N, L, D)
+        desc_vec = self.word2vec(desc)           # (N, L, D)
+        output = torch.cat([self.swem_max(title_vec, t_len),
+                            self.swem_max(desc_vec, d_len),
+                            self.swem_avg(title_vec, t_len),
+                            self.swem_avg(desc_vec, d_len)], 1)
         return output
 
-    def swem_max(self, input):
-        try:
-            output, _ = input.max(0, True)
-        except:
-            print(input)
-            raise
-        return output
+    def swem_max(self, inputs, seq_lens):
+        outputs = []
+        for input, seq_len in zip(inputs, seq_lens):
+            if seq_len > 0:
+                input = input[:seq_len].data
+                output, _ = input.max(0, keepdim=True)
+            else:
+                output = torch.zeros((1, embedding_dim), device=device)
+            outputs.append(output)
+        outputs = torch.cat(outputs)
+        return outputs
 
-    def swem_avg(self, input):
-        output = input.mean(0, True)
-        return output
+    def swem_avg(self, inputs, seq_lens):
+        outputs = []
+        for input, seq_len in zip(inputs, seq_lens):
+            if seq_len > 0:
+                input = input[:seq_len].data
+                output = input.mean(0, keepdim=True)
+            else:
+                output = torch.zeros((1, embedding_dim), device=device)
+            outputs.append(output)
+        outputs = torch.cat(outputs)
+        return outputs

@@ -32,7 +32,7 @@ def load_chars(path):
     return char_sentences
 
 def word_embedding(sentences, model_save_path, txt_save_path, args):
-    print('==> Building word2vec model..')
+    print('==> Building embedding model..')
     model = Word2Vec(sentences, size=args.size, window=args.window, sg=args.sg, hs=args.hs, negative=args.negative,
                      cbow_mean=args.cbow_mean, min_count=args.min_count, iter=args.iter, workers=4)
     print('==> Saving model in {}'.format(model_save_path))

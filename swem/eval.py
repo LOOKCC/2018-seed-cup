@@ -25,8 +25,8 @@ embedding_dim = 512
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-valid_feature_path = './preproc/valid_words.pkl'
-valid_cate_path = './preproc/valid_cate.pkl'
+valid_feature_path = './preproc/valid_features.pkl'
+valid_cate_path = './preproc/valid_labels.pkl'
 
 def eval(clf1, clf2, clf3, dataloader):
     clf1.eval()
