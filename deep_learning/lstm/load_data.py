@@ -38,7 +38,7 @@ def load_dataset(args):
         fields=datafields[:5])
 
     TEXT.build_vocab(train_data, valid_data, test_data, vectors=Vectors(
-        'embedding/word_embedding_512.txt', cache='embedding/vec_cache/'))
+        '../embedding/embedding.txt', cache='../embedding/vec_cache/'))
     for L in LABEL:
         L.build_vocab(train_data, valid_data)
     ID.build_vocab(test_data)

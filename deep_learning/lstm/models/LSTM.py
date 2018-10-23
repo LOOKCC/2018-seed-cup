@@ -8,22 +8,20 @@ from .conv import Conv
 
 class LSTM(nn.Module):
 
-    def __init__(self, TEXT, LABEL, dropout=0.2, freeze=True):
+    def __init__(self, hidden_dim, TEXT, LABEL, dropout=0.2, freeze=True):
         super(TextCNN, self).__init__()
-        c = 128
+        hidden_dim = 128
         self.dropout = dropout
         embedding_dim = TEXT.vocab.vectors.size(1)
         self.embedding = nn.Embedding(len(TEXT.vocab), embedding_dim)
-        # self.convs = nn.ModuleList(
-        #     [Conv(embedding_dim, c, 3, 1, 1, dim=1, numblocks=1) for _ in range(3)])
         self.lstm = nn.ModuleList(
-            [nn.LSTM(embedding_dim, c, batch_first=True, bidirectional=True) for _ in range(3)])
-        # self.lns = nn.ModuleList([nn.LayerNorm(2*c) for _ in range(3)])
+            [nn.LSTM(embedding_dim, hidden_dim[i], batch_first=True, bidirectional=True) for i in range(3)])
+        # self.lns = nn.ModuleList([nn.LayerNorm(2*hidden_dim[i]) for i in range(3)])
         # self.fcs = nn.ModuleList(
-        #     [nn.Linear(2*c, 2*c) for i in range(len(LABEL))])
-        # self.bns = nn.ModuleList([nn.BatchNorm1d(2*c) for _ in range(3)])
+        #     [nn.Linear(2*hidden_dim[i], 2*hidden_dim[i]) for i in range(len(LABEL))])
+        # self.bns = nn.ModuleList([nn.BatchNorm1d(2*hidden_dim[i]) for i in range(3)])
         self.fcs = nn.ModuleList(
-            [nn.Linear(2*c, len(LABEL[i].vocab)) for i in range(len(LABEL))])
+            [nn.Linear(2*hidden_dim[i], len(LABEL[i].vocab)) for i in range(len(LABEL))])
         self._initialize_weights()
         self.embedding.weight.data.copy_(TEXT.vocab.vectors)
         if freeze:

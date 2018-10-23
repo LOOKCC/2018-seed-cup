@@ -12,7 +12,6 @@ from sklearn.metrics import f1_score, accuracy_score
 
 from load_data import load_dataset
 from models.model import Model
-from models.RCNN import RCNN
 
 
 class CateManager(object):
@@ -61,9 +60,8 @@ class CateManager(object):
 def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
     # get device
     device = torch.device(args.device)
-    model = RCNN(TEXT, LABEL, dropout=args.dropout,
+    model = Model(TEXT, LABEL, dropout=args.dropout,
                  freeze=args.freeze).to(device)
-    criterion = [nn.CrossEntropyLoss().to(device) for _ in range(len(LABEL))]
     start_epoch = 0
 
     parameters = [x for x in model.parameters() if x.requires_grad == True]
@@ -78,7 +76,6 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
     # train
     model = model.train()
     print('====   Training..   ====')
-    weight = (0.2, 0.3, 0.5)
     for epoch in range(start_epoch, start_epoch+args.check_epoch):
         print('----    Epoch: %d    ----' % (epoch, ))
         loss_sum = 0
@@ -87,22 +84,21 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
         for iter_num, batch in enumerate(train_iter):
             label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
             optimizer.zero_grad()
-            output = model(
-                torch.cat((batch.title_words, batch.disc_words), dim=1))
-            output = cate_manager.merge_weights(output, label)
-            loss = 0
+            output, result = model(batch)
+            output = [cate_manager.merge_weights(x, label) for x in output]
+            result = cate_manager.merge_weights(result)
             for i in range(len(LABEL)):
-                loss = criterion[i](output[i], label[i])
-                # loss += criterion[i](output[i], label[i]) * weight[i]
-                all_pred[i].extend(output[i].max(1)[1].tolist())
+                for j in range(len(output)):
+                    loss = F.cross_entropy(output[i], label[i])
+                    loss.backward(retain_graph=True if i < 2 else False)
+                    loss_sum += loss.item()
+                all_pred[i].extend(result[i].max(1)[1].tolist())
                 all_label[i].extend(label[i].tolist())
-                loss.backward(retain_graph=True if i < 2 else False)
             optimizer.step()
-            loss_sum += loss.item()
         print('Loss = {}  \ttime: {}'.format(loss_sum/(iter_num+1),
                                              datetime.now()-start_time))
         print(*['Cate{} F1 score: {}  \t'.format(i+1, f1_score(all_label[i],
-                                                               all_pred[i], average='weighted')) for i in range(len(LABEL))])
+                                                               all_pred[i], average='macro')) for i in range(len(LABEL))])
         if args.snapshot_path is None:
             snapshot_path = 'snapshot/model_{}.pth'.format(epoch)
         checkpoint = {
@@ -131,15 +127,15 @@ def evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint):
     all_pred, all_label = [[], [], []], [[], [], []]
     for iter_num, batch in enumerate(valid_iter):
         label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
-        output = model(
+        output, result = model(
             torch.cat((batch.title_words, batch.disc_words), dim=1), training=False)
-        output = cate_manager.merge_weights(output)
-        for i in range(len(output)):
-            all_pred[i].extend(output[i].max(1)[1].tolist())
+        result = cate_manager.merge_weights(result)
+        for i in range(len(result)):
+            all_pred[i].extend(result[i].max(1)[1].tolist())
             all_label[i].extend(label[i].tolist())
     print('time: {}'.format(datetime.now()-start_time))
     print(*['Cate{} F1 score: {}  \t'.format(i+1, f1_score(all_label[i],
-                                                           all_pred[i], average='weighted')) for i in range(len(LABEL))])
+                                                           all_pred[i], average='macro')) for i in range(len(LABEL))])
 
 
 # @torch.no_grad()
@@ -158,11 +154,11 @@ def test(args, test_iter, TEXT, LABEL, ID, cate_manager, checkpoint):
     all_pred, ids = [[], [], []], []
     for iter_num, batch in enumerate(test_iter):
         ids.extend(batch.item_id.tolist())
-        output = model(
+        output, result = model(
             torch.cat((batch.title_words, batch.disc_words), dim=1), training=False)
-        output = cate_manager.merge_weights(output)
-        for i in range(len(output)):
-            all_pred[i].extend(output[i].max(1)[1].tolist())
+        result = cate_manager.merge_weights(result)
+        for i in range(len(result)):
+            all_pred[i].extend(result[i].max(1)[1].tolist())
     print('time: {}'.format(datetime.now()-start_time))
     with open('../data/out.txt', 'w') as fp:
         fp.write('item_id\tcate1_id\tcate2_id\tcate3_id\n')
@@ -176,8 +172,8 @@ def test(args, test_iter, TEXT, LABEL, ID, cate_manager, checkpoint):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--root', default='../data',
-                        help='Path to dataset (default="../data")')
+    parser.add_argument('--root', default='../../data',
+                        help='Path to dataset (default="../../data")')
     parser.add_argument('--device', default='cuda:0',
                         help='Device to use (default="cuda:0")')
     parser.add_argument('--snapshot', default=None,
