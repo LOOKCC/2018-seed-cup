@@ -57,7 +57,7 @@ class CateManager(object):
         return cate_out
 
 
-def train(args, train_iter, TEXT, LABEL, ID, cate_manager, checkpoint=None):
+def train(args, train_iter, TEXT, LABEL, ID, cate_manager, set_id, checkpoint=None):
     # get device
     device = torch.device(args.device)
     model = Pool(TEXT, LABEL, dropout=args.dropout,
@@ -77,13 +77,14 @@ def train(args, train_iter, TEXT, LABEL, ID, cate_manager, checkpoint=None):
                          ID.vocab.itos[label[0][i]], ID.vocab.itos[label[1][i]], ID.vocab.itos[label[2][i]]]
             save_list.append(save_dict)
     print(len(save_list))
-    with open(os.path.join(args.root, 'xgb.pkl'), 'wb') as f:
+    if set_id == 0:
+        file_name = os.path.join(args.root, 'train_xgb.pkl')
+    if set_id == 1:
+        file_name = os.path.join(args.root, 'valid_xgb.pkl')
+    if set_id == 2:
+        file_name = os.path.join(args.root, 'test_xgb.pkl')
+    with open(file_name, 'wb') as f:
         pickle.dump(save_list, f)
-    # with open(os.path.join(args.root, 'xgb.txt'), 'w') as f:
-    #     for i in range(total_length):
-    #         f.write(save_list[i]['ID']+'\t'+save_list[i]['feature']+'\t'+save_list[i]
-    #                 ['cate1']+'\t'+save_list[i]['cate2']+'\t'+save_list[i]['cate3']+'\n')
-    #        print(i/total_length)
 
 
 if __name__ == '__main__':
@@ -135,4 +136,8 @@ if __name__ == '__main__':
     train_iter, valid_iter, test_iter, TEXT, LABEL, ID = load_dataset(args)
     cate_manager = CateManager(args, LABEL)
     train(args, train_iter, TEXT, LABEL, ID,
-          cate_manager, checkpoint=checkpoint)
+          cate_manager, 0, checkpoint=checkpoint)
+    train(args, valid_iter, TEXT, LABEL, ID,
+          cate_manager, 1, checkpoint=checkpoint)
+    # train(args, test_iter, TEXT, LABEL, ID,
+    #       cate_manager, 2, checkpoint=checkpoint)
