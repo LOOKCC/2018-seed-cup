@@ -15,16 +15,23 @@ from scipy.sparse import hstack
 
 
 
+def process(data, label_dict, cate):
+    title = [data[i][1] for i in range(len(data))]
+    label = [label_dict[data[i][cate]] for i in range(len(data))]
+    return title, label
 
+def process_test(data):
+    title = [data[i][1] for i in range(len(data))]
+    return title
 
 
 def get_label_data(test_data, keys, args):
     if args.test:
+        cate1 = 2
+        cate2 = 3
+    else:
         cate1 = 5
         cate2 = 6
-    else:
-        cate1 = 8
-        cate2 = 9
     if len(keys) == 0:
         return test_data
     elif len(keys) == 1:
@@ -34,17 +41,16 @@ def get_label_data(test_data, keys, args):
 
 
 def train_test(train_data, test_data, class_info, keys, param, num_round):
-    train_words = get_train_words(train_data)
     cate_idx = 0
     if len(keys) == 0:
         key_list = list(class_info.keys())
-        cate_idx = 5
+        cate_idx = 2
     elif len(keys) == 1:
         key_list = list(class_info[keys[0]].keys())
-        cate_idx = 6
+        cate_idx = 3
     elif len(keys) == 2:
         key_list = list(class_info[keys[0]][keys[1]].keys())
-        cate_idx = 7
+        cate_idx = 4
     else:
         print('label error')
         exit(0)
@@ -52,19 +58,16 @@ def train_test(train_data, test_data, class_info, keys, param, num_round):
     for i in range(len(key_list)):
         label2idx[key_list[i]] = i
 
-    train_title, train_label = process(train_data, args, train_words, label2idx, cate_idx)
-    test_title = process_test(test_data, args, train_words)
+    train_title, train_label = process(train_data, label2idx, cate_idx)
+    test_title = process_test(test_data)
     param['num_class'] = len(label2idx)
-    vectorizer = CountVectorizer()
-    # tfidftransformer = TfidfTransformer()
-    title = vectorizer.fit_transform(train_title)
-    dtrain = xgb.DMatrix(title, label=train_label)
+
+    dtrain = xgb.DMatrix(train_title, label=train_label)
     evallist  = [(dtrain,'train')]
     bst = xgb.train(param, dtrain, num_round, evallist)
     print("cate1 train OK")
 
-    title = vectorizer.transform(test_title)
-    dtest = xgb.DMatrix(title)
+    dtest = xgb.DMatrix(test_title)
     pred = bst.predict(dtest)
 
     for i in range(len(test_data)):
@@ -103,8 +106,8 @@ def main(args):
 
 
 def val(val_result):
-    predict = [x[5:8] for x in val_result]
-    label = [x[8:11] for x in val_result]
+    predict = [x[2:5] for x in val_result]
+    label = [x[5:8] for x in val_result]
     predict = np.array(predict)
     label = np.array(label)
 
@@ -137,7 +140,7 @@ if __name__ == '__main__':
         with open("../output/submit.txt", "w") as f:
             f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
             for x in result:
-                f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
+                f.write(x[0]+'\t'+str(x[2])+'\t'+str(x[3])+'\t'+str(x[4])+'\n')
                 # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
         # make the order the same with test_file
         finall = []

@@ -37,7 +37,7 @@ def load_leveled_data(data_file, save=True, out_file=None, update=False):
         item_ids (list): list of item ids
     """
     if out_file == None:
-        out_file = data_file[:-4]+'.pkl'
+        out_file = data_file[:-4]+'_deep.pkl'
     if os.path.exists(out_file) and not update:
         return pickle.load(open(out_file, 'rb'))
     else:
