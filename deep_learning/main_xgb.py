@@ -73,10 +73,9 @@ def train(args, train_iter, TEXT, LABEL, ID, cate_manager, checkpoint=None):
         output = model(
             torch.cat((batch.title_words, batch.disc_words), dim=1))
         for i in range(output.shape[0]):
-            save_dict = {'ID': ID.vocab.itos[batch.item_id[i]], 'feature': output[i].cpu().detach().numpy(),
-                         'cate1': ID.vocab.itos[label[0][i]], 'cate2': ID.vocab.itos[label[1][i]], 'cate3': ID.vocab.itos[label[2][i]]}
+            save_dict = [ID.vocab.itos[batch.item_id[i]], output[i].cpu().detach().numpy(),
+                         ID.vocab.itos[label[0][i]], ID.vocab.itos[label[1][i]], ID.vocab.itos[label[2][i]]]
             save_list.append(save_dict)
-    total_length = len(save_list)
     print(len(save_list))
     with open(os.path.join(args.root, 'xgb.pkl'), 'wb') as f:
         pickle.dump(save_list, f)
