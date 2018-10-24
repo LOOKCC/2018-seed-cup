@@ -2,9 +2,9 @@
 # coding=utf-8
 import xgboost as xgb
 import numpy as np
-from load_data import load_data
-from load_data import get_class_data
-from load_data import load_leveled_data
+from deep_load_data import load_data
+from deep_load_data import get_class_data
+from deep_load_data import load_leveled_data
 import argparse
 from datetime import datetime
 from sklearn.feature_extraction.text import CountVectorizer
