@@ -24,9 +24,9 @@ class CateManager(object):
             self.info = pickle.load(fp)
         self.vocabs = [L.vocab for L in LABEL]
         cate_num = [len(vocab) for vocab in self.vocabs]
-        device = torch.device(args.device)
-        self.cate1to2 = torch.zeros(cate_num[0], cate_num[1]).to(device)
-        self.cate2to3 = torch.zeros(cate_num[1], cate_num[2]).to(device)
+        self.device = torch.device(args.device)
+        self.cate1to2 = torch.zeros(cate_num[0], cate_num[1]).to(self.device)
+        self.cate2to3 = torch.zeros(cate_num[1], cate_num[2]).to(self.device)
         self.merge = args.merge
         for i in self.info:
             idx1 = self.vocabs[0].stoi[str(i)]
@@ -37,6 +37,33 @@ class CateManager(object):
                 idx3 = [self.vocabs[2].stoi[str(k)]
                         for k in self.info[i][j].keys()]
                 self.cate2to3[idx2, idx3] = 1
+
+    def get_weights(self, LABEL):
+        weights = []
+        for i in range(len(LABEL)):
+            freqs = LABEL[i].vocab.freqs
+            itos = LABEL[i].vocab.itos
+            if i == 0:
+                num = sum(freqs.values())
+                weights.append(torch.Tensor(
+                    [num/freqs[itos[j]]/len(freqs) for j in range(len(freqs))]).to(self.device))
+            elif i == 1:
+                weights.append(torch.zeros(len(freqs)).to(self.device))
+                freq_tensor = torch.Tensor(
+                    sorted(freqs.values(), reverse=True)).to(self.device)
+                for j in range(len(LABEL[i-1].vocab.freqs)):
+                    num = LABEL[i-1].vocab.freqs[LABEL[i-1].vocab.itos[j]]
+                    weights[-1] += self.cate1to2[j] / \
+                        freq_tensor * num / sum(self.cate1to2[j]).item()
+            else:
+                weights.append(torch.zeros(len(freqs)).to(self.device))
+                freq_tensor = torch.Tensor(
+                    sorted(freqs.values(), reverse=True)).to(self.device)
+                for j in range(len(LABEL[i-1].vocab.freqs)):
+                    num = LABEL[i-1].vocab.freqs[LABEL[i-1].vocab.itos[j]]
+                    weights[-1] += self.cate2to3[j] / \
+                        freq_tensor * num / sum(self.cate2to3[j]).item()
+        return weights
 
     def merge_weights(self, cate_out, label=None):
         if self.merge:
@@ -73,6 +100,8 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
         optimizer.load_state_dict(checkpoint['optim'])
         start_epoch = checkpoint['epoch']
 
+    weights = cate_manager.get_weights(LABEL)
+
     # train
     model = model.train()
     print('====   Training..   ====')
@@ -89,7 +118,8 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
             result = cate_manager.merge_weights(result)
             for i in range(len(LABEL)):
                 for j in range(len(output)):
-                    loss = F.cross_entropy(output[j][i], label[i])
+                    loss = F.cross_entropy(
+                        output[j][i], label[i], weight=weights[i])
                     loss.backward(retain_graph=True if i < 2 else False)
                     loss_sum += loss.item()
                 all_pred[i].extend(result[i].max(1)[1].tolist())
