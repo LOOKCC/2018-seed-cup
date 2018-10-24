@@ -65,7 +65,7 @@ def train_test(train_data, test_data, class_info, keys, param, num_round):
     dtrain = xgb.DMatrix(train_title, label=train_label)
     evallist = [(dtrain, 'train')]
     bst = xgb.train(param, dtrain, num_round, evallist)
-    print("cate1 train OK")
+    print(keys)
 
     dtest = xgb.DMatrix(test_title)
     pred = bst.predict(dtest)
@@ -79,31 +79,37 @@ def main(args):
     finall_test = []
     f = open(args.class_info, 'rb')
     class_info = pickle.load(f)
-    train_leveled_data, _ = load_leveled_data(args.train_file)
+    train_leveled_data, _ = load_leveled_data(args.train_file, update=True)
     train_data_1 = get_class_data(train_leveled_data, [])
 
     test_data_1 = load_data(args.test_file)
-    param = {'max_depth': 8, 'eta': 0.5, 'eval_metric': 'merror',
+    param = {'max_depth': 3, 'eta': 0.5, 'eval_metric': 'merror',
              'silent': 1, 'objective': 'multi:softmax', 'num_class': 0}  # 参数
-    num_round = 300  # 循环次数
+    num_round = 20  # 循环次数
     test_data_1 = train_test(train_data_1, test_data_1,
                              class_info, [], param, num_round)
 
     for key_1 in class_info.keys():
         train_data_2 = get_class_data(train_leveled_data, [key_1])
         test_data_2 = get_label_data(test_data_1, [key_1], args)
-        param = {'max_depth': 7, 'eta': 0.5, 'eval_metric': 'merror',
+        param = {'max_depth': 3, 'eta': 0.5, 'eval_metric': 'merror',
                  'silent': 1, 'objective': 'multi:softmax', 'num_class': 0}  # 参数
-        num_round = 300  # 循环次数
+        num_round = 20  # 循环次数
+        if len(test_data_2) == 0:
+            print('NULL')
+            continue
         test_data_2 = train_test(train_data_2, test_data_2, class_info, [
                                  key_1], param, num_round)
 
         for key_2 in class_info[key_1].keys():
             train_data_3 = get_class_data(train_leveled_data, [key_1, key_2])
             test_data_3 = get_label_data(test_data_2, [key_1, key_2], args)
-            param = {'max_depth': 7, 'eta': 0.5, 'eval_metric': 'merror',
+            param = {'max_depth': 3, 'eta': 0.5, 'eval_metric': 'merror',
                      'silent': 1, 'objective': 'multi:softmax', 'num_class': 0}  # 参数
-            num_round = 400  # 循环次数
+            num_round = 10  # 循环次数
+            if len(test_data_3) == 0:
+                print('NULL')
+                continue
             test_data_3 = train_test(train_data_3, test_data_3, class_info, [
                                      key_1, key_2], param, num_round)
             finall_test += test_data_3
