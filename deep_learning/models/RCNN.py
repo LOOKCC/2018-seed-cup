@@ -27,7 +27,7 @@ class RCNN(nn.Module):
             [Conv(embedding_dim, cnn_out, 5, 1, 2, dim=1, numblocks=1) for _ in range(3)])
 
         self.fcs = nn.ModuleList(
-            [nn.Linear(cnn_out+rnn_out, len(LABEL[i].vocab)) for i in range(len(LABEL))])
+            [nn.Linear(2*rnn_out, len(LABEL[i].vocab)) for i in range(len(LABEL))])
         self._initialize_weights()
         self.embedding.weight.data.copy_(TEXT.vocab.vectors)
         if freeze:
