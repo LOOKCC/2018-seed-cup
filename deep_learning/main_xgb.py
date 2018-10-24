@@ -74,7 +74,7 @@ def train(args, train_iter, TEXT, LABEL, ID, cate_manager, set_id, checkpoint=No
             torch.cat((batch.title_words, batch.disc_words), dim=1))
         for i in range(output.shape[0]):
             save_dict = [ID.vocab.itos[batch.item_id[i]], output[i].cpu().detach().numpy(),
-                         ID.vocab.itos[label[0][i]], ID.vocab.itos[label[1][i]], ID.vocab.itos[label[2][i]]]
+                         LABEL[0].vocab.itos[label[0][i]], LABEL[1].vocab.itos[label[1][i]], LABEL[2].vocab.itos[label[2][i]]]
             save_list.append(save_dict)
     print(len(save_list))
     if set_id == 0:
@@ -83,6 +83,8 @@ def train(args, train_iter, TEXT, LABEL, ID, cate_manager, set_id, checkpoint=No
         file_name = os.path.join(args.root, 'valid_xgb.pkl')
     if set_id == 2:
         file_name = os.path.join(args.root, 'test_xgb.pkl')
+    for i in range(5):
+        print(save_list[10][i])
     with open(file_name, 'wb') as f:
         pickle.dump(save_list, f)
 

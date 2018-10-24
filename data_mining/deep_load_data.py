@@ -1,12 +1,13 @@
 import pickle
 import os
 
+
 def load_data(data_file):
     data = pickle.load(open(data_file, 'rb'))
     for i in range(len(data)):
-        data[i][2] = str(data[i][2])
-        data[i][3] = str(data[i][3])
-        data[i][4] = str(data[i][4])
+        data[i][2] = int(data[i][2])
+        data[i][3] = int(data[i][3])
+        data[i][4] = int(data[i][4])
     return data
 
 

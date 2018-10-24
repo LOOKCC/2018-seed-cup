@@ -41,7 +41,7 @@ def load_dataset(args):
         'embedding/embedding.txt', cache='embedding/vec_cache/'))
     for L in LABEL:
         L.build_vocab(train_data, valid_data)
-    ID.build_vocab(test_data)
+    ID.build_vocab(train_data, valid_data, test_data)
 
     train_iter, valid_iter = data.BucketIterator.splits(
         (train_data, valid_data),
