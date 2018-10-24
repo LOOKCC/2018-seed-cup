@@ -75,8 +75,6 @@ python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
         train_a.txt
         valid_a.txt
         k_fold
-            train.txt
-            test.txt
     bagging
         bagging.py
     data_mining
