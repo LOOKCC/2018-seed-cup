@@ -4,9 +4,7 @@ import torch.optim as optim
 import torch.utils.data as data
 import torch.backends.cudnn as cudnn
 import pickle
-
 import argparse
-import time
 
 from utils.dataset import TrainDataset, padding
 
@@ -17,18 +15,29 @@ valid_feature_path = './preproc/valid_words.pkl'
 train_cate_path = './preproc/train_cate.pkl'
 valid_cate_path = './preproc/valid_cate.pkl'
 
+WORDS_CNT = 72548
+
 
 def parse_cmd():
     parser = argparse.ArgumentParser()
-    parser.add_argument('-m', '--model', type=int, default=1, help='train cate m classifier, default=1')
-    parser.add_argument('-r', '--resume', action='store_true', help='resume from checkpoint')
-    parser.add_argument('--batch_size', type=int, default=64, help='batch size, default=64')
-    parser.add_argument('--lr', type=float, default=1e-3, help='learning rate, default=1e-3')
-    parser.add_argument('--weight_decay', type=float, default=0, help='l2 weight decay, default=0')
+    parser.add_argument('-m', '--model', type=int, default=1,
+                        help='train cate m classifier, default=1')
+    parser.add_argument('-r', '--resume', action='store_true',
+                        help='resume from checkpoint')
+    parser.add_argument('--batch_size', type=int, default=64,
+                        help='batch size, default=64')
+    parser.add_argument('--lr', type=float, default=1e-3,
+                        help='learning rate, default=1e-3')
+    parser.add_argument('--weight_decay', type=float, default=0,
+                        help='l2 weight decay, default=0')
     # parser.add_argument('-d', '--drop', action='store_true', help='drop some words in docs while training')
     # parser.add_argument('--drop_rate', type=float, default=0.2, help='rate of dropped words, default=0.2')
-    parser.add_argument('--h_d', type=int, default=128, help='hidden dim, default=128')
-    parser.add_argument('--ckpt', required=True, help='load/save checkpoint path')
+    parser.add_argument('--h_d', type=int, default=128,
+                        help='hidden dim, default=128')
+    parser.add_argument('--ckpt', required=True,
+                        help='load/save checkpoint path')
+    parser.add_argument('--embedding_dim', type=int, default=512,
+                        help='word/char embedding dim, default=512')
     args = parser.parse_args()
     return args
 
@@ -43,13 +52,13 @@ if __name__ == '__main__':
         from models.cate1_classifier import *
         if args.resume:
             state = torch.load(args.ckpt)
-            model = Cate1Classifier(state['args'])
+            model = Cate1Classifier(WORDS_CNT+1, state['args'])
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
         else:
             word2vec = torch.load('./preproc/word2vec.pth')
-            model = Cate1Classifier(args, word2vec)
+            model = Cate1Classifier(WORDS_CNT+1, args, word2vec)
 
     elif args.model == 2:
         from models.cate2_classifier import *
@@ -57,7 +66,7 @@ if __name__ == '__main__':
             state = torch.load(args.ckpt)
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate2Classifier(state['args'], mask1=mask1)
+            model = Cate2Classifier(WORDS_CNT+1, state['args'], mask1=mask1)
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
@@ -65,7 +74,7 @@ if __name__ == '__main__':
             word2vec = torch.load('./preproc/word2vec.pth')
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate2Classifier(args, word2vec, mask1)
+            model = Cate2Classifier(WORDS_CNT+1, args, word2vec, mask1)
 
     elif args.model == 3:
         from models.cate3_classifier import *
@@ -73,7 +82,7 @@ if __name__ == '__main__':
             state = torch.load(args.ckpt)
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate3Classifier(state['args'], mask2=mask2)
+            model = Cate3Classifier(WORDS_CNT+1, state['args'], mask2=mask2)
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
@@ -81,7 +90,7 @@ if __name__ == '__main__':
             word2vec = torch.load('./preproc/word2vec.pth')
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate3Classifier(args, word2vec, mask2)
+            model = Cate3Classifier(WORDS_CNT+1, args, word2vec, mask2)
 
     else:
         raise Exception
@@ -90,8 +99,10 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         cudnn.benchmark = True
 
-    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     criterion = nn.CrossEntropyLoss()
+    optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
+    if args.resume:
+        optimizer.load_state_dict(model['optimizer'])
 
     with open(train_feature_path, 'rb') as fp:
         train_features = pickle.load(fp)
@@ -151,7 +162,6 @@ if __name__ == '__main__':
 
     for epoch in range(start_epoch, start_epoch+20):
         train_epoch(epoch, model, train_loader, criterion, optimizer, args)
-        delta_time = time.time() - start_time
         with torch.no_grad():
             best_score = eval_epoch(epoch, model, valid_loader, best_score, args)
         if torch.cuda.is_available():
