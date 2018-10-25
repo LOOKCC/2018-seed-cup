@@ -15,7 +15,7 @@ def get_class_info(data):
         if level3 not in class_info[level1][level2]:
             class_info[level1][level2][level3] = 0
         class_info[level1][level2][level3] += 1
-    with open('../data/class_info.pkl', 'wb') as fp:
+    with open('../data/SeedCup2018_Data_B/SeedCup2018_Data_B/class_info.pkl', 'wb') as fp:
         pickle.dump(class_info, fp)
 
 
@@ -25,7 +25,7 @@ def word_count(data):
         counter.update(line[2])
         counter.update(line[4])
     with open('word_count.csv', 'w') as fp:
-        for x,y in counter.items():
+        for x, y in counter.items():
             fp.write(x + ',' + str(y) + '\n')
 
 

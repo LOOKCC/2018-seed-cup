@@ -23,6 +23,7 @@ def load_words(path):
     print('Word sentence example:', word_sentences[0])
     return word_sentences
 
+
 def load_chars(path):
     print('==> Loading chars from', path)
     char_sentences = []
@@ -35,6 +36,7 @@ def load_chars(path):
     print('Chars sentence example:', char_sentences[0])
     return char_sentences
 
+
 @timer
 def word_embedding(sentences, model_save_path, txt_save_path, args):
     print('==> Building embedding model..')
@@ -45,36 +47,53 @@ def word_embedding(sentences, model_save_path, txt_save_path, args):
     print('Finished saving model')
     print('==> Saving txt in {}'.format(txt_save_path))
     model.wv.save_word2vec_format(txt_save_path)
+    print('-----train f1-----')
     print('Finished saving txt')
+
 
 def parse_cmd():
     parser = argparse.ArgumentParser()
     parser.add_argument('-w', '--word', type=int, default=1,
-                        help='1 to embed words, 0 to embed chars; default=1')
-    parser.add_argument('--size', type=int, default=512,
-                        help='embedding size; default=512')
-    parser.add_argument('--window', type=int, default=5,
-                        help='window size; default=5')
+<< << << < HEAD
+                        help='1 to embed words, 0 to embed chars')
+    parser.add_argument('--size', type=int, default=512, help='embedding size')
+    parser.add_argument('--window', type=int, default=5, help='window size')
     parser.add_argument('--sg', type=int, default=0,
-                        help='0 for CBOW, 1 for SkipGram; default=0')
+                        help='0 for CBOW, 1 for SkipGram')
     parser.add_argument('--hs', type=int, default=0,
-                        help='0 for Negative Sampling, 1 for Hierarchical Softmax; default=0')
+                        help='0 for Negative Sampling, 1 for Hierarchical Softmax')
     parser.add_argument('--negative', type=int, default=10,
-                        help='if using Negative Sampling, it will be the number of negative samples; default=10')
-    parser.add_argument('--cbow_mean', type=int, default=1,
-                        help='if using CBOW, 1 to use mean of surrounding words\' vectors,'
-                             '0 to use sum of surrounding words\' vectors; default=1')
+                        help='if using Negative Sampling, it will be the number of negative samples')
+    parser.add_argument('--cbow_mean', type=int, default=1, help='if using CBOW, 1 to use mean of surrounding words\' vectors,'
+                        '0 to use sum of surrounding words\' vectors')
     parser.add_argument('--min_count', type=int, default=5,
-                        help='lower limit of words\' frequency; default=5')
-    parser.add_argument('--iter', type=int, default=10,
-                        help='iter times; default=10')
-    args = parser.parse_args()
+                        help='lower limit of words\' frequency')
+    parser.add_argument('--iter', type=int, default=10)
+                        help = '1 to embed words, 0 to embed chars; default=1')
+    parser.add_argument('--size', type = int, default = 512,
+                        help = 'embedding size; default=512')
+    parser.add_argument('--window', type = int, default = 5,
+                        help = 'window size; default=5')
+    parser.add_argument('--sg', type = int, default = 0,
+                        help = '0 for CBOW, 1 for SkipGram; default=0')
+    parser.add_argument('--hs', type = int, default = 0,
+                        help = '0 for Negative Sampling, 1 for Hierarchical Softmax; default=0')
+    parser.add_argument('--negative', type = int, default = 10,
+                        help = 'if using Negative Sampling, it will be the number of negative samples; default=10')
+    parser.add_argument('--cbow_mean', type = int, default = 1,
+                        help = 'if using CBOW, 1 to use mean of surrounding words\' vectors,'
+                             '0 to use sum of surrounding words\' vectors; default=1')
+    parser.add_argument('--min_count', type = int, default = 5,
+                        help = 'lower limit of words\' frequency; default=5')
+    parser.add_argument('--iter', type = int, default = 10,
+                        help = 'iter times; default=10')
+    args=parser.parse_args()
     return args
 
 
 if __name__ == '__main__':
-    args = parse_cmd()
-    sentences = []
+    args=parse_cmd()
+    sentences=[]
     if args.word:
         sentences.extend(load_words(train_a_path))
         sentences.extend(load_words(valid_a_path))
