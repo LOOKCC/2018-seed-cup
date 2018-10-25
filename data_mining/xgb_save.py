@@ -261,38 +261,40 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    # train(args, 200, 200, 200)
-    # test_file = args.test_file
-    # args.test_file = args.train_file
-    # train_result = valid(args)
-    # args.test_file = test_file
-    test_result = valid(args)
-    # print('-----train f1-----')
-    # val(train_result)
-    # print('-----test f1-----')
-    # val(test_result)
+    
 
-    # if not args.test:
-    print('OK, to save')
-    # else:
-    with open("../output/submit.txt", "w") as f:
-        f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
-        for x in test_result:
-            f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
-            # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
-    # make the order the same with test_file
-    finall = []
-    with open("../output/submit.txt", 'r') as f:
-        f.readline()
-        lines_sub = f.readlines()
-    with open(args.test_file, 'r') as f:
-        f.readline()
-        lines_test = f.readlines()
-    for test_line in lines_test:
-        for sub_line in lines_sub:
-            if test_line[0:33] == sub_line[0:33]:
-                finall.append(sub_line)
-    with open("../output/submit_ordered.txt", 'w') as f:
-        f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
-        for line in finall:
-            f.write(line)
+    if not args.test:
+        train(args, 200, 200, 200)
+        test_file = args.test_file
+        args.test_file = args.train_file
+        train_result = valid(args)
+        args.test_file = test_file
+        test_result = valid(args)
+        print('-----train f1-----')
+        val(train_result)
+        print('-----test f1-----')
+        val(test_result)
+    else:
+        test_result = valid(args)
+        print('OK, to save')
+        with open("../output/submit.txt", "w") as f:
+            f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
+            for x in test_result:
+                f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
+                # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
+        # make the order the same with test_file
+        finall = []
+        with open("../output/submit.txt", 'r') as f:
+            f.readline()
+            lines_sub = f.readlines()
+        with open(args.test_file, 'r') as f:
+            f.readline()
+            lines_test = f.readlines()
+        for test_line in lines_test:
+            for sub_line in lines_sub:
+                if test_line[0:33] == sub_line[0:33]:
+                    finall.append(sub_line)
+        with open("../output/submit_ordered.txt", 'w') as f:
+            f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
+            for line in finall:
+                f.write(line)
