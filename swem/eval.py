@@ -12,21 +12,13 @@ from models.cate2_classifier import Cate2Classifier
 from models.cate3_classifier import Cate3Classifier
 from utils.dataset import TrainDataset, padding
 
-WORDS_CNT = 34835
-CHARS_CNT = 3939
 
-CATE1_CNT = 10
-CATE2_CNT = 64
-CATE3_CNT = 125
-
-TRAIN_SAMPLES = 140562
-
-embedding_dim = 512
+WORDS_CNT = 72548
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-valid_feature_path = './preproc/valid_features.pkl'
-valid_cate_path = './preproc/valid_labels.pkl'
+valid_feature_path = './preproc/valid_words.pkl'
+valid_cate_path = './preproc/valid_cate.pkl'
 
 def eval(clf1, clf2, clf3, dataloader):
     clf1.eval()
@@ -59,10 +51,14 @@ def eval(clf1, clf2, clf3, dataloader):
 
 def parse_cmd():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--clf1', required=True, help='cate1 classifier')
-    parser.add_argument('--clf2', required=True, help='cate2 classifier')
-    parser.add_argument('--clf3', required=True, help='cate3 classifier')
-    parser.add_argument('--batch_size', type=int, default=64, help='batch size, default=64')
+    parser.add_argument('--clf1', required=True,
+                        help='cate1 classifier')
+    parser.add_argument('--clf2', required=True,
+                        help='cate2 classifier')
+    parser.add_argument('--clf3', required=True,
+                        help='cate3 classifier')
+    parser.add_argument('--batch_size', type=int, default=64,
+                        help='batch size, default=64')
     args = parser.parse_args()
     return args
 
@@ -96,18 +92,18 @@ if __name__ == '__main__':
     valid_loader = data.DataLoader(valid_set, batch_size=args.batch_size, num_workers=4)
 
     clf1_state = torch.load(args.clf1)
-    clf1 = Cate1Classifier(clf1_state['args'])
+    clf1 = Cate1Classifier(WORDS_CNT+1, clf1_state['args'])
     clf1.load_state_dict(clf1_state['model'])
 
     with open('./preproc/mask.pkl', 'rb') as fp:
         mask1, mask2 = pickle.load(fp)
 
     clf2_state = torch.load(args.clf2)
-    clf2 = Cate2Classifier(clf2_state['args'], mask1=mask1)
+    clf2 = Cate2Classifier(WORDS_CNT+1, clf2_state['args'], mask1=mask1)
     clf2.load_state_dict(clf2_state['model'])
 
     clf3_state = torch.load(args.clf3)
-    clf3 = Cate3Classifier(clf3_state['args'], mask2=mask2)
+    clf3 = Cate3Classifier(WORDS_CNT+1, clf3_state['args'], mask2=mask2)
     clf3.load_state_dict(clf3_state['model'])
 
     clf1 = clf1.to(device)

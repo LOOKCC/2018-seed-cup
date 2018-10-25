@@ -1,8 +1,8 @@
 import pickle
 
-CATE1_CNT = 10
-CATE2_CNT = 64
-CATE3_CNT = 125
+CATE1_CNT = 20
+CATE2_CNT = 135
+CATE3_CNT = 265
 
 save_path = './mask.pkl'
 

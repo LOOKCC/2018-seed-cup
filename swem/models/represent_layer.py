@@ -1,26 +1,16 @@
 import torch
 import torch.nn as nn
 
-WORDS_CNT = 34835
-CHARS_CNT = 3939
-
-CATE1_CNT = 10
-CATE2_CNT = 64
-CATE3_CNT = 125
-
-TRAIN_SAMPLES = 140562
-
-embedding_dim = 512
-
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
 
 class SwemCat(nn.Module):
-    def __init__(self, word2vec=None):
+    def __init__(self, input_size, embedding_dim, word2vec=None):
         super(SwemCat, self).__init__()
-        self.word2vec = nn.Embedding(WORDS_CNT+1, embedding_dim, padding_idx=0)
+        self.embedding_dim = embedding_dim
+        self.word2vec = nn.Embedding(input_size, embedding_dim, padding_idx=0)
         if word2vec is not None:
-            self.word2vec.weight = nn.Parameter(word2vec)
+            self.word2vec.weight.data.copy_(word2vec)
 
 
     def forward(self, title, desc, t_len, d_len, mode):
@@ -36,10 +26,10 @@ class SwemCat(nn.Module):
         outputs = []
         for input, seq_len in zip(inputs, seq_lens):
             if seq_len > 0:
-                input = input[:seq_len].data
+                input = input[:seq_len]
                 output, _ = input.max(0, keepdim=True)
             else:
-                output = torch.zeros((1, embedding_dim), device=device)
+                output = torch.zeros((1, self.embedding_dim), device=device)
             outputs.append(output)
         outputs = torch.cat(outputs)
         return outputs
@@ -48,10 +38,10 @@ class SwemCat(nn.Module):
         outputs = []
         for input, seq_len in zip(inputs, seq_lens):
             if seq_len > 0:
-                input = input[:seq_len].data
+                input = input[:seq_len]
                 output = input.mean(0, keepdim=True)
             else:
-                output = torch.zeros((1, embedding_dim), device=device)
+                output = torch.zeros((1, self.embedding_dim), device=device)
             outputs.append(output)
         outputs = torch.cat(outputs)
         return outputs

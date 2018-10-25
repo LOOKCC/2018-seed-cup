@@ -4,6 +4,7 @@ _test/
 trained_models/
 log/
 
+*.model
 *.txt
 *.csv
 *.zip

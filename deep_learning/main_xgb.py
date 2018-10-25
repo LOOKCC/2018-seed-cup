@@ -57,7 +57,7 @@ class CateManager(object):
         return cate_out
 
 
-def train(args, train_iter, TEXT, LABEL, ID, cate_manager, checkpoint=None):
+def train(args, train_iter, TEXT, LABEL, ID, cate_manager, set_id, checkpoint=None):
     # get device
     device = torch.device(args.device)
     model = Pool(TEXT, LABEL, dropout=args.dropout,
@@ -73,18 +73,20 @@ def train(args, train_iter, TEXT, LABEL, ID, cate_manager, checkpoint=None):
         output = model(
             torch.cat((batch.title_words, batch.disc_words), dim=1))
         for i in range(output.shape[0]):
-            save_dict = {'ID': ID.vocab.itos[batch.item_id[i]], 'feature': output[i].cpu().detach().numpy(),
-                         'cate1': ID.vocab.itos[label[0][i]], 'cate2': ID.vocab.itos[label[1][i]], 'cate3': ID.vocab.itos[label[2][i]]}
+            save_dict = [ID.vocab.itos[batch.item_id[i]], output[i].cpu().detach().numpy(),
+                         LABEL[0].vocab.itos[label[0][i]], LABEL[1].vocab.itos[label[1][i]], LABEL[2].vocab.itos[label[2][i]]]
             save_list.append(save_dict)
-    total_length = len(save_list)
     print(len(save_list))
-    with open(os.path.join(args.root, 'xgb.pkl'), 'wb') as f:
+    if set_id == 0:
+        file_name = os.path.join(args.root, 'train_xgb.pkl')
+    if set_id == 1:
+        file_name = os.path.join(args.root, 'valid_xgb.pkl')
+    if set_id == 2:
+        file_name = os.path.join(args.root, 'test_xgb.pkl')
+    for i in range(5):
+        print(save_list[10][i])
+    with open(file_name, 'wb') as f:
         pickle.dump(save_list, f)
-    # with open(os.path.join(args.root, 'xgb.txt'), 'w') as f:
-    #     for i in range(total_length):
-    #         f.write(save_list[i]['ID']+'\t'+save_list[i]['feature']+'\t'+save_list[i]
-    #                 ['cate1']+'\t'+save_list[i]['cate2']+'\t'+save_list[i]['cate3']+'\n')
-    #        print(i/total_length)
 
 
 if __name__ == '__main__':
@@ -136,4 +138,8 @@ if __name__ == '__main__':
     train_iter, valid_iter, test_iter, TEXT, LABEL, ID = load_dataset(args)
     cate_manager = CateManager(args, LABEL)
     train(args, train_iter, TEXT, LABEL, ID,
-          cate_manager, checkpoint=checkpoint)
+          cate_manager, 0, checkpoint=checkpoint)
+    train(args, valid_iter, TEXT, LABEL, ID,
+          cate_manager, 1, checkpoint=checkpoint)
+    # train(args, test_iter, TEXT, LABEL, ID,
+    #       cate_manager, 2, checkpoint=checkpoint)
