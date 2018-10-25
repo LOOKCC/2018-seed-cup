@@ -4,6 +4,8 @@ import torch.nn.init as init
 import torch.nn.functional as F
 from torch.autograd import Variable
 from .lstm import LSTM
+from .res_lstm import ResLSTM
+from .max_pool import MaxPool
 
 
 class Model(nn.Module):
@@ -18,7 +20,15 @@ class Model(nn.Module):
         x = [torch.cat((batch.title_words, batch.disc_words), dim=1),
              torch.cat((batch.title_chars, batch.disc_chars), dim=1)]
         # x = [batch.disc_words]
-        x = [self.models[i](x[i]) for i in range(len(x))]
-        result = zip(*x)
+        y = []
+        for i in range(len(x)):
+            output = self.models[i](x[i])
+            if isinstance(output[0], list):
+                y.extend(output)
+            else:
+                y.append(output)
+        del x
+        del output
+        result = zip(*y)
         result = [sum(prob) for prob in result]
-        return x, result
+        return y, result

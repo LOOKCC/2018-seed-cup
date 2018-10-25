@@ -120,7 +120,7 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
                 for j in range(len(output)):
                     loss = F.cross_entropy(
                         output[j][i], label[i], weight=weights[i])
-                    loss.backward(retain_graph=True if i < 2 else False)
+                    loss.backward(retain_graph=True)
                     loss_sum += loss.item()
                 all_pred[i].extend(result[i].max(1)[1].tolist())
                 all_label[i].extend(label[i].tolist())
@@ -206,8 +206,8 @@ if __name__ == '__main__':
                         help='Device to use (default="cuda:0")')
     parser.add_argument('--snapshot', default=None,
                         help='Path to save model to save (default="checkpoints/crnn.pth")')
-    parser.add_argument('--batch_size', type=int, default=32,
-                        help='Input batch size (default=128)')
+    parser.add_argument('--batch_size', type=int, default=64,
+                        help='Input batch size (default=64)')
 
     parser.add_argument('--snapshot_path', default=None,
                         help='Path to save model (default="snapshot/model_{epoch}.pth")')
