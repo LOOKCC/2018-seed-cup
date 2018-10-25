@@ -65,28 +65,33 @@ def train(args, num_round_1, num_round_2, num_round_3):
     class_info = pickle.load(f)
     train_leveled_data, _ = load_leveled_data(args.train_file)
     train_data_1 = get_class_data(train_leveled_data, [])
+    
+    test_leveled_data, _ = load_leveled_data(args.test_file)
+    test_data_1 = get_class_data(test_leveled_data, [])
 
     train_words = get_train_words(train_data_1)
     key_list = list(class_info.keys())
     label2idx = {}
     for i in range(len(key_list)):
         label2idx[key_list[i]] = i
-    train_title, train_label = process(
-        train_data_1, args, train_words, label2idx, 5)
+    train_title, train_label = process(train_data_1, args, train_words, label2idx, 5)
+    test_title, test_label = process(test_data_1, args, train_words, label2idx, 5)
     vectorizer_1 = CountVectorizer()
-    title = vectorizer_1.fit_transform(train_title)
+    title_train = vectorizer_1.fit_transform(train_title)
+    title_test = vectorizer_1.fit_transform(test_title)
 
     # test_data_1 = load_data(args.test_file)
     param = {'max_depth': 7, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
              'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
-    dtrain = xgb.DMatrix(title, label=train_label)
-    evallist = [(dtrain, 'train')]
+    dtrain = xgb.DMatrix(title_train, label=train_label)
+    dtest = xgb.DMatrix(title_test, label=test_label)
+    evallist = [(dtest, 'test')]
     if os.path.exists('./models/cate1.pkl'):
         local_data = pickle.load(open('./models/cate1.pkl', 'rb'))
         bst = local_data[0]
-        bst = xgb.train(param, dtrain, num_round_1, evallist, xgb_model=bst)
+        bst = xgb.train(param, dtrain, num_round_1, evallist, xgb_model=bst, early_stopping_rounds=10)
     else:
-        bst = xgb.train(param, dtrain, num_round_1, evallist)
+        bst = xgb.train(param, dtrain, num_round_1, evallist, early_stopping_rounds=10)
     # save xgb train_words vectorizer
     to_save = [bst, vectorizer_1, train_words]
     with open('./models/cate1.pkl', 'wb') as f:
@@ -94,58 +99,63 @@ def train(args, num_round_1, num_round_2, num_round_3):
 
     for key_1 in class_info.keys():
         train_data_2 = get_class_data(train_leveled_data, [key_1])
+        test_data_2 = get_class_data(test_leveled_data, [key_1])
         train_words = get_train_words(train_data_2)
         key_list = list(class_info[key_1].keys())
         label2idx = {}
         for i in range(len(key_list)):
             label2idx[key_list[i]] = i
-        train_title, train_label = process(
-            train_data_2, args, train_words, label2idx, 6)
+        train_title, train_label = process(train_data_2, args, train_words, label2idx, 6)
+        test_title, test_label = process(test_data_2, args, train_words, label2idx, 6)
         vectorizer_2 = CountVectorizer()
-        title = vectorizer_2.fit_transform(train_title)
+        title_train = vectorizer_2.fit_transform(train_title)
+        title_test = vectorizer_2.fit_transform(test_title)
 
         # test_data_2 = get_label_data(test_data_1, [key_1], args)
         param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
                  'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
-        dtrain = xgb.DMatrix(title, label=train_label)
-        evallist = [(dtrain, 'train')]
+        dtrain = xgb.DMatrix(title_train, label=train_label)
+        dtest = xgb.DMatrix(title_test, label=test_label)
+        evallist = [(dtest, 'test')]
         if os.path.exists('./models/cate2_'+str(key_1)+'.pkl'):
             local_data = pickle.load(
                 open('./models/cate2_'+str(key_1)+'.pkl', 'rb'))
             bst = local_data[0]
-            bst = xgb.train(param, dtrain, num_round_2,
-                            evallist, xgb_model=bst)
+            bst = xgb.train(param, dtrain, num_round_2, evallist, xgb_model=bst,  early_stopping_rounds=10)
         else:
-            bst = xgb.train(param, dtrain, num_round_2, evallist)
+            bst = xgb.train(param, dtrain, num_round_2, evallist,  early_stopping_rounds=10)
         to_save = [bst, vectorizer_2, train_words]
         with open('./models/cate2_'+str(key_1)+'.pkl', 'wb') as f:
             pickle.dump(to_save, f)
 
         for key_2 in class_info[key_1].keys():
             train_data_3 = get_class_data(train_leveled_data, [key_1, key_2])
+            test_data_3 = get_class_data(test_leveled_data, [key_1, key_2])
             train_words = get_train_words(train_data_3)
             key_list = list(class_info[key_1][key_2].keys())
             label2idx = {}
             for i in range(len(key_list)):
                 label2idx[key_list[i]] = i
-            train_title, train_label = process(
-                train_data_3, args, train_words, label2idx, 7)
+            train_title, train_label = process(train_data_3, args, train_words, label2idx, 7)
+            test_title, test_label = process(test_data_3, args, train_words, label2idx, 7)
             vectorizer_3 = CountVectorizer()
-            title = vectorizer_3.fit_transform(train_title)
+            title_train = vectorizer_3.fit_transform(train_title)
+            title_test = vectorizer_3.fit_transform(test_title)
 
             # test_data_2 = get_label_data(test_data_1, [key_1], args)
             param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
                      'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
-            dtrain = xgb.DMatrix(title, label=train_label)
-            evallist = [(dtrain, 'train')]
+            dtrain = xgb.DMatrix(title_train, label=train_label)
+            dtest = xgb.DMatrix(title_test, label=test_label)
+            evallist = [(dtest, 'test')]
             if os.path.exists('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl'):
                 local_data = pickle.load(
                     open('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl', 'rb'))
                 bst = local_data[0]
                 bst = xgb.train(param, dtrain, num_round_3,
-                                evallist, xgb_model=bst)
+                                evallist, xgb_model=bst, early_stopping_rounds=10)
             else:
-                bst = xgb.train(param, dtrain, num_round_3, evallist)
+                bst = xgb.train(param, dtrain, num_round_3, evallist, early_stopping_rounds=10)
             to_save = [bst, vectorizer_3, train_words]
             with open('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl', 'wb') as f:
                 pickle.dump(to_save, f)
@@ -240,17 +250,16 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    for i in range(args.epoch//10):
-        test_file = args.test_file
-        args.test_file = args.train_file
-        train(args, 10, 10, 10)
-        train_result = valid(args)
-        args.test_file = test_file
-        test_result = valid(args)
-        print('-----train f1-----')
-        val(train_result)
-        print('-----test f1-----')
-        val(test_result)
+    train(args, 200, 200, 200)
+    test_file = args.test_file
+    args.test_file = args.train_file
+    train_result = valid(args)
+    args.test_file = test_file
+    test_result = valid(args)
+    print('-----train f1-----')
+    val(train_result)
+    print('-----test f1-----')
+    val(test_result)
 
     # if not args.test:
 
