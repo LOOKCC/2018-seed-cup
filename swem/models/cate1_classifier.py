@@ -7,25 +7,21 @@ from sklearn.metrics import f1_score
 from .represent_layer import SwemCat
 from utils.timer import timer
 
-WORDS_CNT = 34835
-CHARS_CNT = 3939
+CATE1_CNT = 20
+CATE2_CNT = 135
+CATE3_CNT = 265
 
-CATE1_CNT = 10
-CATE2_CNT = 64
-CATE3_CNT = 125
-
-TRAIN_SAMPLES = 140562
-
-embedding_dim = 512
+TRAIN_SAMPLES = 911256
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
+
 class Cate1Classifier(nn.Module):
-    def __init__(self, args, word2vec=None):
+    def __init__(self, input_size, args, word2vec=None):
         super(Cate1Classifier, self).__init__()
-        self.swem_layer = SwemCat(word2vec)
+        self.swem_layer = SwemCat(input_size, args.embedding_dim, word2vec)
         self.args = args
-        self.fc = nn.Linear(embedding_dim*4, args.h_d)
+        self.fc = nn.Linear(args.embedding_dim*4, args.h_d)
         self.clf = nn.Linear(args.h_d, CATE1_CNT)
         self.bn = nn.BatchNorm1d(args.h_d)
 
@@ -66,7 +62,7 @@ def train_epoch(epoch, model, dataloader, criterion, optimizer, args):
     print('Training cate1 f1 score: {:.4}'.format(cate1_score))
 
 
-def eval_epoch(epoch, model, dataloader, best_score, args):
+def eval_epoch(epoch, model, dataloader, best_score, optimizer, args):
     model.eval()
     pred1 = []
     target1 = []
@@ -82,6 +78,7 @@ def eval_epoch(epoch, model, dataloader, best_score, args):
         print('==> Saving..')
         best_score = cate1_score
         state = {'model': model.state_dict(),
+                 'optimizer': optimizer.state_dict(),
                  'args': args,
                  'best_score': best_score,
                  'epoch': epoch}
