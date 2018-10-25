@@ -77,14 +77,14 @@ def train(args, num_round_1, num_round_2, num_round_3):
     title = vectorizer_1.fit_transform(train_title)
 
     # test_data_1 = load_data(args.test_file)
-    param = {'max_depth': 8, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
+    param = {'max_depth': 7, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
              'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
     dtrain = xgb.DMatrix(title, label=train_label)
     evallist = [(dtrain, 'train')]
     if os.path.exists('./models/cate1.pkl'):
         local_data = pickle.load(open('./models/cate1.pkl', 'rb'))
         bst = local_data[0]
-        bst.train(param, dtrain, num_round_1, evallist)
+        bst = xgb.train(param, dtrain, num_round_1, evallist, xgb_model=bst)
     else:
         bst = xgb.train(param, dtrain, num_round_1, evallist)
     # save xgb train_words vectorizer
@@ -105,14 +105,16 @@ def train(args, num_round_1, num_round_2, num_round_3):
         title = vectorizer_2.fit_transform(train_title)
 
         # test_data_2 = get_label_data(test_data_1, [key_1], args)
-        param = {'max_depth': 7, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
+        param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
                  'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
         dtrain = xgb.DMatrix(title, label=train_label)
         evallist = [(dtrain, 'train')]
         if os.path.exists('./models/cate2_'+str(key_1)+'.pkl'):
-            local_data = pickle.load(open('./models/cate2_'+str(key_1)+'.pkl', 'rb'))
+            local_data = pickle.load(
+                open('./models/cate2_'+str(key_1)+'.pkl', 'rb'))
             bst = local_data[0]
-            bst.train(param, dtrain, num_round_2, evallist)
+            bst = xgb.train(param, dtrain, num_round_2,
+                            evallist, xgb_model=bst)
         else:
             bst = xgb.train(param, dtrain, num_round_2, evallist)
         to_save = [bst, vectorizer_2, train_words]
@@ -132,14 +134,16 @@ def train(args, num_round_1, num_round_2, num_round_3):
             title = vectorizer_3.fit_transform(train_title)
 
             # test_data_2 = get_label_data(test_data_1, [key_1], args)
-            param = {'max_depth': 7, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
+            param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
                      'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
             dtrain = xgb.DMatrix(title, label=train_label)
             evallist = [(dtrain, 'train')]
             if os.path.exists('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl'):
-                local_data = pickle.load(open('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl', 'rb'))
+                local_data = pickle.load(
+                    open('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl', 'rb'))
                 bst = local_data[0]
-                bst.train(param, dtrain, num_round_3, evallist)
+                bst = xgb.train(param, dtrain, num_round_3,
+                                evallist, xgb_model=bst)
             else:
                 bst = xgb.train(param, dtrain, num_round_3, evallist)
             to_save = [bst, vectorizer_3, train_words]
@@ -224,19 +228,22 @@ def val(val_result):
 
 if __name__ == '__main__':
     parser = argparse.ArgumentParser()
-    parser.add_argument('--train_file', type=str,default='../data/train_b.txt', help='Training Data file')
-    parser.add_argument('--test_file', type=str, default='../data/valid_b.txt',help='Testing data file')
-    parser.add_argument('--class_info', type=str, default='../data/class_info.txt',
+    parser.add_argument('--train_file', type=str,
+                        default='../data/train_b.txt', help='Training Data file')
+    parser.add_argument('--test_file', type=str,
+                        default='../data/valid_b.txt', help='Testing data file')
+    parser.add_argument('--class_info', type=str, default='../data/class_info.pkl',
                         help='word to idx file, which has deleted the uncommonly uesd words')
     parser.add_argument('--test', action='store_true', help='train or test')
-    parser.add_argument('--epoch', type=int, default=100,help='epoch to train')
+    parser.add_argument('--epoch', type=int, default=100,
+                        help='epoch to train')
 
     args = parser.parse_args()
 
     for i in range(args.epoch//10):
         test_file = args.test_file
         args.test_file = args.train_file
-        train(args, 10, 10 ,10)
+        train(args, 10, 10, 10)
         train_result = valid(args)
         args.test_file = test_file
         test_result = valid(args)
