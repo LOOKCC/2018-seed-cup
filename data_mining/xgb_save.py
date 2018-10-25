@@ -65,7 +65,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
     class_info = pickle.load(f)
     train_leveled_data, _ = load_leveled_data(args.train_file)
     train_data_1 = get_class_data(train_leveled_data, [])
-    
+
     test_leveled_data, _ = load_leveled_data(args.test_file)
     test_data_1 = get_class_data(test_leveled_data, [])
 
@@ -74,11 +74,13 @@ def train(args, num_round_1, num_round_2, num_round_3):
     label2idx = {}
     for i in range(len(key_list)):
         label2idx[key_list[i]] = i
-    train_title, train_label = process(train_data_1, args, train_words, label2idx, 5)
-    test_title, test_label = process(test_data_1, args, train_words, label2idx, 5)
+    train_title, train_label = process(
+        train_data_1, args, train_words, label2idx, 5)
+    test_title, test_label = process(
+        test_data_1, args, train_words, label2idx, 5)
     vectorizer_1 = CountVectorizer()
     title_train = vectorizer_1.fit_transform(train_title)
-    title_test = vectorizer_1.fit_transform(test_title)
+    title_test = vectorizer_1.transform(test_title)
 
     # test_data_1 = load_data(args.test_file)
     param = {'max_depth': 7, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
@@ -89,9 +91,11 @@ def train(args, num_round_1, num_round_2, num_round_3):
     if os.path.exists('./models/cate1.pkl'):
         local_data = pickle.load(open('./models/cate1.pkl', 'rb'))
         bst = local_data[0]
-        bst = xgb.train(param, dtrain, num_round_1, evallist, xgb_model=bst, early_stopping_rounds=10)
+        bst = xgb.train(param, dtrain, num_round_1, evallist,
+                        xgb_model=bst, early_stopping_rounds=20)
     else:
-        bst = xgb.train(param, dtrain, num_round_1, evallist, early_stopping_rounds=10)
+        bst = xgb.train(param, dtrain, num_round_1,
+                        evallist, early_stopping_rounds=20)
     # save xgb train_words vectorizer
     to_save = [bst, vectorizer_1, train_words]
     with open('./models/cate1.pkl', 'wb') as f:
@@ -105,11 +109,13 @@ def train(args, num_round_1, num_round_2, num_round_3):
         label2idx = {}
         for i in range(len(key_list)):
             label2idx[key_list[i]] = i
-        train_title, train_label = process(train_data_2, args, train_words, label2idx, 6)
-        test_title, test_label = process(test_data_2, args, train_words, label2idx, 6)
+        train_title, train_label = process(
+            train_data_2, args, train_words, label2idx, 6)
+        test_title, test_label = process(
+            test_data_2, args, train_words, label2idx, 6)
         vectorizer_2 = CountVectorizer()
         title_train = vectorizer_2.fit_transform(train_title)
-        title_test = vectorizer_2.fit_transform(test_title)
+        title_test = vectorizer_2.transform(test_title)
 
         # test_data_2 = get_label_data(test_data_1, [key_1], args)
         param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
@@ -121,9 +127,11 @@ def train(args, num_round_1, num_round_2, num_round_3):
             local_data = pickle.load(
                 open('./models/cate2_'+str(key_1)+'.pkl', 'rb'))
             bst = local_data[0]
-            bst = xgb.train(param, dtrain, num_round_2, evallist, xgb_model=bst,  early_stopping_rounds=10)
+            bst = xgb.train(param, dtrain, num_round_2, evallist,
+                            xgb_model=bst,  early_stopping_rounds=20)
         else:
-            bst = xgb.train(param, dtrain, num_round_2, evallist,  early_stopping_rounds=10)
+            bst = xgb.train(param, dtrain, num_round_2,
+                            evallist,  early_stopping_rounds=20)
         to_save = [bst, vectorizer_2, train_words]
         with open('./models/cate2_'+str(key_1)+'.pkl', 'wb') as f:
             pickle.dump(to_save, f)
@@ -136,11 +144,13 @@ def train(args, num_round_1, num_round_2, num_round_3):
             label2idx = {}
             for i in range(len(key_list)):
                 label2idx[key_list[i]] = i
-            train_title, train_label = process(train_data_3, args, train_words, label2idx, 7)
-            test_title, test_label = process(test_data_3, args, train_words, label2idx, 7)
+            train_title, train_label = process(
+                train_data_3, args, train_words, label2idx, 7)
+            test_title, test_label = process(
+                test_data_3, args, train_words, label2idx, 7)
             vectorizer_3 = CountVectorizer()
             title_train = vectorizer_3.fit_transform(train_title)
-            title_test = vectorizer_3.fit_transform(test_title)
+            title_test = vectorizer_3.transform(test_title)
 
             # test_data_2 = get_label_data(test_data_1, [key_1], args)
             param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
@@ -153,9 +163,10 @@ def train(args, num_round_1, num_round_2, num_round_3):
                     open('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl', 'rb'))
                 bst = local_data[0]
                 bst = xgb.train(param, dtrain, num_round_3,
-                                evallist, xgb_model=bst, early_stopping_rounds=10)
+                                evallist, xgb_model=bst, early_stopping_rounds=20)
             else:
-                bst = xgb.train(param, dtrain, num_round_3, evallist, early_stopping_rounds=10)
+                bst = xgb.train(param, dtrain, num_round_3,
+                                evallist, early_stopping_rounds=20)
             to_save = [bst, vectorizer_3, train_words]
             with open('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl', 'wb') as f:
                 pickle.dump(to_save, f)
@@ -250,38 +261,38 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    train(args, 200, 200, 200)
-    test_file = args.test_file
-    args.test_file = args.train_file
-    train_result = valid(args)
-    args.test_file = test_file
+    # train(args, 200, 200, 200)
+    # test_file = args.test_file
+    # args.test_file = args.train_file
+    # train_result = valid(args)
+    # args.test_file = test_file
     test_result = valid(args)
-    print('-----train f1-----')
-    val(train_result)
-    print('-----test f1-----')
-    val(test_result)
+    # print('-----train f1-----')
+    # val(train_result)
+    # print('-----test f1-----')
+    # val(test_result)
 
     # if not args.test:
-
+    print('OK, to save')
     # else:
-    #     with open("../output/submit.txt", "w") as f:
-    #         f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
-    #         for x in result:
-    #             f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
-    #             # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
-    #     # make the order the same with test_file
-    #     finall = []
-    #     with open("../output/submit.txt", 'r') as f:
-    #         f.readline()
-    #         lines_sub = f.readlines()
-    #     with open(args.test_file, 'r') as f:
-    #         f.readline()
-    #         lines_test = f.readlines()
-    #     for test_line in lines_test:
-    #         for sub_line in lines_sub:
-    #             if test_line[0:33] == sub_line[0:33]:
-    #                 finall.append(sub_line)
-    #     with open("../output/submit_ordered.txt", 'w') as f:
-    #         f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
-    #         for line in finall:
-    #             f.write(line)
+    with open("../output/submit.txt", "w") as f:
+        f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
+        for x in test_result:
+            f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
+            # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
+    # make the order the same with test_file
+    finall = []
+    with open("../output/submit.txt", 'r') as f:
+        f.readline()
+        lines_sub = f.readlines()
+    with open(args.test_file, 'r') as f:
+        f.readline()
+        lines_test = f.readlines()
+    for test_line in lines_test:
+        for sub_line in lines_sub:
+            if test_line[0:33] == sub_line[0:33]:
+                finall.append(sub_line)
+    with open("../output/submit_ordered.txt", 'w') as f:
+        f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
+        for line in finall:
+            f.write(line)
