@@ -45,6 +45,22 @@ def process_test(data, args, train_words):
     return title
 
 
+def get_train_weight(label):
+    class_weight = {}
+    label_weight = []    
+    for i in range(len(label)):
+        if label[i] in class_weight:
+            class_weight[label[i]] += 1
+        else:
+            class_weight[label[i]] = 1
+    for key in class_weight.keys():
+        class_weight[key] = len(label)/class_weight[key]/len(list(class_weight.keys()))
+    
+    for i in range(len(label)):
+        label_weight.append(class_weight[label[i]])
+        
+    return label_weight
+
 def get_label_data(test_data, keys, args):
     if args.test:
         cate1 = 5
@@ -76,6 +92,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
         label2idx[key_list[i]] = i
     train_title, train_label = process(
         train_data_1, args, train_words, label2idx, 5)
+    train_weight = get_train_weight(train_label)
     test_title, test_label = process(
         test_data_1, args, train_words, label2idx, 5)
     vectorizer_1 = CountVectorizer()
@@ -85,11 +102,12 @@ def train(args, num_round_1, num_round_2, num_round_3):
     # test_data_1 = load_data(args.test_file)
     param = {'max_depth': 7, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
              'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
-    dtrain = xgb.DMatrix(title_train, label=train_label)
+    dtrain = xgb.DMatrix(title_train, label=train_label, weight=train_weight)
     dtest = xgb.DMatrix(title_test, label=test_label)
     evallist = [(dtest, 'test')]
-    if os.path.exists('./models/cate1.pkl'):
-        local_data = pickle.load(open('./models/cate1.pkl', 'rb'))
+    file_path = os.path.join(args.save_path, 'cate1.pkl')
+    if os.path.exists(file_path):
+        local_data = pickle.load(open(file_path, 'rb'))
         bst = local_data[0]
         bst = xgb.train(param, dtrain, num_round_1, evallist,
                         xgb_model=bst, early_stopping_rounds=20)
@@ -98,7 +116,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
                         evallist, early_stopping_rounds=20)
     # save xgb train_words vectorizer
     to_save = [bst, vectorizer_1, train_words]
-    with open('./models/cate1.pkl', 'wb') as f:
+    with open(file_path, 'wb') as f:
         pickle.dump(to_save, f)
 
     for key_1 in class_info.keys():
@@ -111,6 +129,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
             label2idx[key_list[i]] = i
         train_title, train_label = process(
             train_data_2, args, train_words, label2idx, 6)
+        train_weight = get_train_weight(train_label)
         test_title, test_label = process(
             test_data_2, args, train_words, label2idx, 6)
         vectorizer_2 = CountVectorizer()
@@ -120,12 +139,13 @@ def train(args, num_round_1, num_round_2, num_round_3):
         # test_data_2 = get_label_data(test_data_1, [key_1], args)
         param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
                  'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
-        dtrain = xgb.DMatrix(title_train, label=train_label)
+        dtrain = xgb.DMatrix(title_train, label=train_label, weight=train_weight)
         dtest = xgb.DMatrix(title_test, label=test_label)
         evallist = [(dtest, 'test')]
-        if os.path.exists('./models/cate2_'+str(key_1)+'.pkl'):
+        file_path = os.path.join(args.save_path, 'cate2_'+str(key_1)+'.pkl')
+        if os.path.exists(file_path):
             local_data = pickle.load(
-                open('./models/cate2_'+str(key_1)+'.pkl', 'rb'))
+                open(file_path, 'rb'))
             bst = local_data[0]
             bst = xgb.train(param, dtrain, num_round_2, evallist,
                             xgb_model=bst,  early_stopping_rounds=20)
@@ -133,7 +153,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
             bst = xgb.train(param, dtrain, num_round_2,
                             evallist,  early_stopping_rounds=20)
         to_save = [bst, vectorizer_2, train_words]
-        with open('./models/cate2_'+str(key_1)+'.pkl', 'wb') as f:
+        with open(file_path, 'wb') as f:
             pickle.dump(to_save, f)
 
         for key_2 in class_info[key_1].keys():
@@ -146,6 +166,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
                 label2idx[key_list[i]] = i
             train_title, train_label = process(
                 train_data_3, args, train_words, label2idx, 7)
+            train_weight = get_train_weight(train_label)
             test_title, test_label = process(
                 test_data_3, args, train_words, label2idx, 7)
             vectorizer_3 = CountVectorizer()
@@ -155,12 +176,13 @@ def train(args, num_round_1, num_round_2, num_round_3):
             # test_data_2 = get_label_data(test_data_1, [key_1], args)
             param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
                      'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
-            dtrain = xgb.DMatrix(title_train, label=train_label)
+            dtrain = xgb.DMatrix(title_train, label=train_label, weight=train_weight)
             dtest = xgb.DMatrix(title_test, label=test_label)
             evallist = [(dtest, 'test')]
-            if os.path.exists('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl'):
+            file_path = os.path.join(args.save_path, 'cate3_'+str(key_1)+'_'+str(key_2)+'.pkl')
+            if os.path.exists(file_path):
                 local_data = pickle.load(
-                    open('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl', 'rb'))
+                    open(file_path, 'rb'))
                 bst = local_data[0]
                 bst = xgb.train(param, dtrain, num_round_3,
                                 evallist, xgb_model=bst, early_stopping_rounds=20)
@@ -168,7 +190,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
                 bst = xgb.train(param, dtrain, num_round_3,
                                 evallist, early_stopping_rounds=20)
             to_save = [bst, vectorizer_3, train_words]
-            with open('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl', 'wb') as f:
+            with open(file_path, 'wb') as f:
                 pickle.dump(to_save, f)
 
 
@@ -177,7 +199,7 @@ def valid(args):
     f = open(args.class_info, 'rb')
     class_info = pickle.load(f)
 
-    local_data = pickle.load(open('./models/cate1.pkl', 'rb'))
+    local_data = pickle.load(open(os.path.join(args.save_path, 'cate1.pkl'), 'rb'))
     test_data_1 = load_data(args.test_file)
     key_list = list(class_info.keys())
     label2idx = {}
@@ -193,7 +215,7 @@ def valid(args):
 
     for key_1 in class_info.keys():
         local_data = pickle.load(
-            open('./models/cate2_'+str(key_1)+'.pkl', 'rb'))
+            open(os.path.join(args.save_path, 'cate2_'+str(key_1)+'.pkl'), 'rb'))
         test_data_2 = get_label_data(test_data_1, [key_1], args)
         key_list = list(class_info[key_1].keys())
         label2idx = {}
@@ -209,7 +231,7 @@ def valid(args):
 
         for key_2 in class_info[key_1].keys():
             local_data = pickle.load(
-                open('./models/cate3_'+str(key_1)+'_'+str(key_2)+'.pkl', 'rb'))
+                open(os.path.join(args.save_path, 'cate3_'+str(key_1)+'_'+str(key_2)+'.pkl'), 'rb'))
             test_data_3 = get_label_data(test_data_2, [key_1, key_2], args)
             key_list = list(class_info[key_1][key_2].keys())
             label2idx = {}
@@ -253,6 +275,8 @@ if __name__ == '__main__':
                         default='../data/train_b.txt', help='Training Data file')
     parser.add_argument('--test_file', type=str,
                         default='../data/valid_b.txt', help='Testing data file')
+    parser.add_argument('--save_path', type=str,
+                        default='./models', help='Path to save the models')
     parser.add_argument('--class_info', type=str, default='../data/class_info.pkl',
                         help='word to idx file, which has deleted the uncommonly uesd words')
     parser.add_argument('--test', action='store_true', help='train or test')
