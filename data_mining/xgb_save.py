@@ -261,10 +261,8 @@ if __name__ == '__main__':
 
     args = parser.parse_args()
 
-    
-
     if not args.test:
-        train(args, 200, 200, 200)
+        train(args, args.epoch, args.epoch, args.epoch)
         test_file = args.test_file
         args.test_file = args.train_file
         train_result = valid(args)
