@@ -3,6 +3,7 @@ _test/
 *data/*
 trained_models/
 log/
+bagging/
 
 *.model
 *.txt
