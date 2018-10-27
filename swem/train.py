@@ -38,6 +38,8 @@ def parse_cmd():
                         help='load/save checkpoint path')
     parser.add_argument('--embedding_dim', type=int, default=512,
                         help='word/char embedding dim, default=512')
+    parser.add_argument('--class_weight', type=int, default=0,
+                        help='add class weight on loss, default=0')
     args = parser.parse_args()
     return args
 
@@ -99,10 +101,16 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         cudnn.benchmark = True
 
-    criterion = nn.CrossEntropyLoss()
+    if args.class_weight:
+        with open('./utils/class_weight.pkl', 'rb') as fp:
+            class_weight = pickle.load(fp)
+        criterion = nn.CrossEntropyLoss(weight=class_weight[args.model-1].to(device))
+    else:
+        criterion = nn.CrossEntropyLoss()
+
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if args.resume:
-        optimizer.load_state_dict(model['optimizer'])
+        optimizer.load_state_dict(state['optimizer'])
 
     with open(train_feature_path, 'rb') as fp:
         train_features = pickle.load(fp)
@@ -163,7 +171,7 @@ if __name__ == '__main__':
     for epoch in range(start_epoch, start_epoch+20):
         train_epoch(epoch, model, train_loader, criterion, optimizer, args)
         with torch.no_grad():
-            best_score = eval_epoch(epoch, model, valid_loader, best_score, args)
+            best_score = eval_epoch(epoch, model, valid_loader, best_score, optimizer, args)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 
