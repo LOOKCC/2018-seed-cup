@@ -12,6 +12,7 @@ from sklearn.metrics import f1_score
 from scipy.sparse import hstack
 import os
 
+
 def get_train_words(train_data):
     train_set = {}
     for line in train_data:
@@ -44,18 +45,19 @@ def process_test(data, args, train_words):
 
 def get_train_weight(label):
     class_weight = {}
-    label_weight = []    
+    label_weight = []
     for i in range(len(label)):
         if label[i] in class_weight:
             class_weight[label[i]] += 1
         else:
             class_weight[label[i]] = 1
     for key in class_weight.keys():
-        class_weight[key] = len(label)/class_weight[key]/len(list(class_weight.keys()))
-    
+        class_weight[key] = len(label)/class_weight[key] / \
+            len(list(class_weight.keys()))
+
     for i in range(len(label)):
         label_weight.append(class_weight[label[i]])
-        
+
     return label_weight
 
 
@@ -76,7 +78,7 @@ def train(args, num_round):
     label2idx = {}
     for i in range(len(key_list)):
         label2idx[key_list[i]] = i
-    
+    print(len(key_list))
     train_title, train_label = process(
         train_data_1, args, train_words, label2idx, 7)
     train_weight = get_train_weight(train_label)
@@ -107,12 +109,12 @@ def train(args, num_round):
         pickle.dump(to_save, f)
 
 
-
 def valid(args):
     f = open(args.class_info, 'rb')
     class_info = pickle.load(f)
 
-    local_data = pickle.load(open(os.path.join(args.save_path, 'cate.pkl'), 'rb'))
+    local_data = pickle.load(
+        open(os.path.join(args.save_path, 'cate.pkl'), 'rb'))
     test_data_1 = load_data(args.test_file)
 
     key_list = []
@@ -127,7 +129,6 @@ def valid(args):
     title = local_data[1].transform(test_title)
     dtest = xgb.DMatrix(title)
     pred = local_data[0].predict(dtest)
-
 
     for i in range(len(test_data_1)):
         test_data_1[i].append(key_list[int(pred[i])])
@@ -144,7 +145,6 @@ def val(val_result):
     score_1 = f1_score(predict, label, average='macro')
     print('cate1_acc: ', np.mean(predict == label))
     print('cate1_F1 score: ', score_1)
-
 
 
 if __name__ == '__main__':
