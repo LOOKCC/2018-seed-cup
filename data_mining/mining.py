@@ -15,7 +15,7 @@ def get_class_info(data):
         if level3 not in class_info[level1][level2]:
             class_info[level1][level2][level3] = 0
         class_info[level1][level2][level3] += 1
-    with open('../data/SeedCup2018_Data_B/SeedCup2018_Data_B/class_info.pkl', 'wb') as fp:
+    with open('../data/class_info.pkl', 'wb') as fp:
         pickle.dump(class_info, fp)
 
 

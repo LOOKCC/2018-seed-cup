@@ -209,6 +209,9 @@ def valid(args):
     title = local_data[1].transform(test_title)
     dtest = xgb.DMatrix(title)
     pred = local_data[0].predict(dtest)
+    # pred = local_data[0].predict(dtest, output_margin=True)
+    # print(pred.shape)
+    # print(pred[0])
 
     for i in range(len(test_data_1)):
         test_data_1[i].append(key_list[int(pred[i])])
