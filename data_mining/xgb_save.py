@@ -18,9 +18,9 @@ import os
 def get_train_words(train_data):
     train_set = {}
     for line in train_data:
-        for word in line[2]:
+        for word in line[1]:
             train_set[word] = 0
-        for word in line[4]:
+        for word in line[3]:
             train_set[word] = 0
     return train_set
 
@@ -29,8 +29,8 @@ def process(data, args, train_words, label_dict, cate):
     title = []
     label = []
     for line in data:
-        temp = [x for x in line[2] if x in train_words]
-        temp += [x for x in line[4] if x in train_words]
+        temp = [x for x in line[1] if x in train_words]
+        temp += [x for x in line[3] if x in train_words]
         title.append(' '.join(temp))
         label.append(label_dict[line[cate]])
     return title, label
@@ -39,27 +39,29 @@ def process(data, args, train_words, label_dict, cate):
 def process_test(data, args, train_words):
     title = []
     for line in data:
-        temp = [x for x in line[2] if x in train_words]
-        temp += [x for x in line[4] if x in train_words]
+        temp = [x for x in line[1] if x in train_words]
+        temp += [x for x in line[3] if x in train_words]
         title.append(' '.join(temp))
     return title
 
 
 def get_train_weight(label):
     class_weight = {}
-    label_weight = []    
+    label_weight = []
     for i in range(len(label)):
         if label[i] in class_weight:
             class_weight[label[i]] += 1
         else:
             class_weight[label[i]] = 1
     for key in class_weight.keys():
-        class_weight[key] = len(label)/class_weight[key]/len(list(class_weight.keys()))
-    
+        class_weight[key] = len(label)/class_weight[key] / \
+            len(list(class_weight.keys()))
+
     for i in range(len(label)):
         label_weight.append(class_weight[label[i]])
-        
+
     return label_weight
+
 
 def get_label_data(test_data, keys, args):
     if args.test:
@@ -139,7 +141,8 @@ def train(args, num_round_1, num_round_2, num_round_3):
         # test_data_2 = get_label_data(test_data_1, [key_1], args)
         param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
                  'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
-        dtrain = xgb.DMatrix(title_train, label=train_label, weight=train_weight)
+        dtrain = xgb.DMatrix(
+            title_train, label=train_label, weight=train_weight)
         dtest = xgb.DMatrix(title_test, label=test_label)
         evallist = [(dtest, 'test')]
         file_path = os.path.join(args.save_path, 'cate2_'+str(key_1)+'.pkl')
@@ -176,10 +179,12 @@ def train(args, num_round_1, num_round_2, num_round_3):
             # test_data_2 = get_label_data(test_data_1, [key_1], args)
             param = {'max_depth': 6, 'eta': 0.5, 'eval_metric': 'merror', 'silent': 1,
                      'objective': 'multi:softmax', 'num_class': len(label2idx)}  # 参数
-            dtrain = xgb.DMatrix(title_train, label=train_label, weight=train_weight)
+            dtrain = xgb.DMatrix(
+                title_train, label=train_label, weight=train_weight)
             dtest = xgb.DMatrix(title_test, label=test_label)
             evallist = [(dtest, 'test')]
-            file_path = os.path.join(args.save_path, 'cate3_'+str(key_1)+'_'+str(key_2)+'.pkl')
+            file_path = os.path.join(
+                args.save_path, 'cate3_'+str(key_1)+'_'+str(key_2)+'.pkl')
             if os.path.exists(file_path):
                 local_data = pickle.load(
                     open(file_path, 'rb'))
@@ -199,7 +204,8 @@ def valid(args):
     f = open(args.class_info, 'rb')
     class_info = pickle.load(f)
 
-    local_data = pickle.load(open(os.path.join(args.save_path, 'cate1.pkl'), 'rb'))
+    local_data = pickle.load(
+        open(os.path.join(args.save_path, 'cate1.pkl'), 'rb'))
     test_data_1 = load_data(args.test_file)
     key_list = list(class_info.keys())
     label2idx = {}
