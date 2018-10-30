@@ -10,16 +10,20 @@ from utils.dataset import TrainDataset, padding
 
 device = torch.device('cuda' if torch.cuda.is_available() else 'cpu')
 
-train_feature_path = './preproc/train_words.pkl'
-valid_feature_path = './preproc/valid_words.pkl'
+train_word_path = './preproc/train_words.pkl'
+valid_word_path = './preproc/valid_words.pkl'
+train_char_path = './preproc/train_chars.pkl'
+valid_char_path = './preproc/valid_chars.pkl'
 train_cate_path = './preproc/train_cate.pkl'
 valid_cate_path = './preproc/valid_cate.pkl'
 
 WORDS_CNT = 72548
-
+CHARS_CNT = 4933
 
 def parse_cmd():
     parser = argparse.ArgumentParser()
+    parser.add_argument('-w', '--word', type=int, default=1,
+                        help='1 for word model, 0 for char model; default=1')
     parser.add_argument('-m', '--model', type=int, default=1,
                         help='train cate m classifier, default=1')
     parser.add_argument('-r', '--resume', action='store_true',
@@ -38,6 +42,8 @@ def parse_cmd():
                         help='load/save checkpoint path')
     parser.add_argument('--embedding_dim', type=int, default=512,
                         help='word/char embedding dim, default=512')
+    parser.add_argument('--class_weight', type=int, default=0,
+                        help='add class weight on loss, default=0')
     args = parser.parse_args()
     return args
 
@@ -48,17 +54,26 @@ if __name__ == '__main__':
     best_score = 0
     start_epoch = 0
 
+    if args.word:
+        input_size = WORDS_CNT + 1
+        train_feature_path = train_word_path
+        valid_feature_path = valid_word_path
+    else:
+        input_size = CHARS_CNT + 1
+        train_feature_path = train_char_path
+        valid_feature_path = valid_char_path
+
     if args.model == 1:
         from models.cate1_classifier import *
         if args.resume:
             state = torch.load(args.ckpt)
-            model = Cate1Classifier(WORDS_CNT+1, state['args'])
+            model = Cate1Classifier(input_size, state['args'])
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
         else:
             word2vec = torch.load('./preproc/word2vec.pth')
-            model = Cate1Classifier(WORDS_CNT+1, args, word2vec)
+            model = Cate1Classifier(input_size, args, word2vec)
 
     elif args.model == 2:
         from models.cate2_classifier import *
@@ -66,7 +81,7 @@ if __name__ == '__main__':
             state = torch.load(args.ckpt)
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate2Classifier(WORDS_CNT+1, state['args'], mask1=mask1)
+            model = Cate2Classifier(input_size, state['args'], mask1=mask1)
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
@@ -74,7 +89,7 @@ if __name__ == '__main__':
             word2vec = torch.load('./preproc/word2vec.pth')
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate2Classifier(WORDS_CNT+1, args, word2vec, mask1)
+            model = Cate2Classifier(input_size, args, word2vec, mask1)
 
     elif args.model == 3:
         from models.cate3_classifier import *
@@ -82,7 +97,7 @@ if __name__ == '__main__':
             state = torch.load(args.ckpt)
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate3Classifier(WORDS_CNT+1, state['args'], mask2=mask2)
+            model = Cate3Classifier(input_size, state['args'], mask2=mask2)
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
@@ -90,7 +105,7 @@ if __name__ == '__main__':
             word2vec = torch.load('./preproc/word2vec.pth')
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate3Classifier(WORDS_CNT+1, args, word2vec, mask2)
+            model = Cate3Classifier(input_size, args, word2vec, mask2)
 
     else:
         raise Exception
@@ -99,10 +114,16 @@ if __name__ == '__main__':
     if torch.cuda.is_available():
         cudnn.benchmark = True
 
-    criterion = nn.CrossEntropyLoss()
+    if args.class_weight:
+        with open('./utils/class_weight.pkl', 'rb') as fp:
+            class_weight = pickle.load(fp)
+        criterion = nn.CrossEntropyLoss(weight=class_weight[args.model-1].to(device))
+    else:
+        criterion = nn.CrossEntropyLoss()
+
     optimizer = optim.Adam(model.parameters(), lr=args.lr, weight_decay=args.weight_decay)
     if args.resume:
-        optimizer.load_state_dict(model['optimizer'])
+        optimizer.load_state_dict(state['optimizer'])
 
     with open(train_feature_path, 'rb') as fp:
         train_features = pickle.load(fp)
@@ -163,7 +184,7 @@ if __name__ == '__main__':
     for epoch in range(start_epoch, start_epoch+20):
         train_epoch(epoch, model, train_loader, criterion, optimizer, args)
         with torch.no_grad():
-            best_score = eval_epoch(epoch, model, valid_loader, best_score, args)
+            best_score = eval_epoch(epoch, model, valid_loader, best_score, optimizer, args)
         if torch.cuda.is_available():
             torch.cuda.empty_cache()
 

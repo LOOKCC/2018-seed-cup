@@ -81,7 +81,7 @@ def eval_epoch(epoch, model, dataloader, best_score, optimizer, args):
         best_score = cate3_score
         state = {'model': model.state_dict(),
                  'optimizer': optimizer.state_dict(),
-                 'args': args,
+                 'args': model.args,
                  'best_score': best_score,
                  'epoch': epoch}
         torch.save(state, args.ckpt)
