@@ -74,13 +74,13 @@ class CateManager(object):
             # cate_out[1] = cate_out[1] * torch.mm(F.softmax(cate_out[0]), self.cate1to2)
             # cate_out[2] = cate_out[2] * torch.mm(F.softmax(cate_out[1]), self.cate2to3)
             if label is not None:
-                cate_out[1] = cate_out[1] * (self.cate1to2[label[0]]*101-100)
-                cate_out[2] = cate_out[2] * (self.cate2to3[label[1]]*101-100)
+                cate_out[1] = cate_out[1] * (self.cate1to2[label[0]]*101)
+                cate_out[2] = cate_out[2] * (self.cate2to3[label[1]]*101)
             else:
                 cate_out[1] = cate_out[1] * \
-                    (self.cate1to2[cate_out[0].max(1)[1]]*101-100)
+                    (self.cate1to2[cate_out[0].max(1)[1]]*101)
                 cate_out[2] = cate_out[2] * \
-                    (self.cate2to3[cate_out[1].max(1)[1]]*101-100)
+                    (self.cate2to3[cate_out[1].max(1)[1]]*101)
         return cate_out
 
 
@@ -119,7 +119,7 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
             for i in range(len(LABEL)):
                 for j in range(len(output)):
                     loss = F.cross_entropy(
-                        output[j][i], label[i], weight=weights[i])
+                        output[j][i], label[i])  # , weight=weights[i])
                     loss.backward(retain_graph=True)
                     loss_sum += loss.item()
                 all_pred[i].extend(result[i].max(1)[1].tolist())

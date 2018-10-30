@@ -27,12 +27,12 @@ def load_dataset(args):
     train_data, valid_data = data.TabularDataset.splits(
         path=args.root,  # 数据存放的根目录
         root=args.root,  # 数据存放的根目录
-        train='train_a.txt', validation='valid_a.txt',
+        train='train.txt', validation='valid_b.txt',
         format='tsv',
         skip_header=True,  # 如果你的csv有表头, 确保这个表头不会作为数据处理
         fields=datafields)
     test_data = data.TabularDataset(
-        path=os.path.join(args.root, 'test_a.txt'),
+        path=os.path.join(args.root, 'test_b.txt'),
         format='tsv',
         skip_header=True,
         fields=datafields[:5])
