@@ -4,6 +4,7 @@ import os
 import sys
 import torch
 import pickle
+import random
 import numpy as np
 import torch.nn as nn
 from torchtext import data
@@ -11,9 +12,15 @@ from torchtext import datasets
 from torchtext.vocab import Vectors
 
 
+def tokenize(x):
+    x = x.split(',')
+    random.shuffle(x)
+    return x
+
+
 def load_dataset(args):
     TEXT = data.Field(sequential=True, use_vocab=True,
-                      tokenize=lambda x: x.split(','), batch_first=True)
+                      tokenize=tokenize, batch_first=True)
     LABEL = [data.Field(sequential=False, use_vocab=True,
                         unk_token=None) for _ in range(3)]
     ID = data.Field(sequential=False, use_vocab=True)

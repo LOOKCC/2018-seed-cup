@@ -10,21 +10,26 @@ from .max_pool import MaxPool
 from .textcnn import TextCNN
 from .rescnn import ResCNN
 from .cnn import CNN
+from .RCNN import RCNN
 
 
 class Model(nn.Module):
 
     def __init__(self, *args, **kwargs):
         super(Model, self).__init__()
-        kernel_size = [5]
+        kernel_size = [5]  # , 4, 3, 5, 4, 3]
         hidden_dims = [[128, 128, 128]]  # , [128, 128, 128]]
-        self.models = nn.ModuleList([CNN(kernel_size[i], *args, **kwargs)  # hidden_dim
+        self.models = nn.ModuleList([RCNN(*args, **kwargs)  # hidden_dim
                                      for i in range(1)])
 
     def forward(self, batch, training=True):
         # x = [batch.title_chars, ]
         x = [torch.cat((batch.title_words, batch.disc_words), dim=1),
-             ]  # torch.cat((batch.title_chars, batch.disc_chars), dim=1)]
+             ]  # torch.cat((batch.title_words, batch.disc_words), dim=1),
+        # torch.cat((batch.title_words, batch.disc_words), dim=1),
+        # torch.cat((batch.title_chars, batch.disc_chars), dim=1),
+        # torch.cat((batch.title_chars, batch.disc_chars), dim=1),
+        # torch.cat((batch.title_chars, batch.disc_chars), dim=1)]
         y = []
         for i in range(len(x)):
             output = self.models[i](x[i])
