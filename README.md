@@ -24,16 +24,20 @@
 ### 运行步骤
 
 ## xgboost运行步骤
-```
+```shell
 cd data_mining
-# for train and valid
-python xgb.py --train_file=../data/train_a.txt --test_file=../data/valid_a.txt --class_info=../data/class_info.pkl
-# for train and test, the ordered result is in submit_ordered.txt
-python xgb.py --train_file=../data/train_a.txt --test_file=../data/test_a.txt --class_info=../data/class_info.pkl --test
+# Please put the test, valid, train data in ../data, and the following will generate a file named class_info.pkl in ../data for training
+python mining.py ../data/train_b.txt
+# train and valid with char
+python xgb_save.py --save_path=./models_char --epoch=300 --use_char
+# train and valid with word
+python xgb_save.py --save_path=./models_word --epoch=300 --use_word
+# for test, the ordered result is in submit_ordered.txt, here take the word for example
+python xgb_save.py --test_file=../data/test_b.txt --save_path=./models_word --test --use_word
 ```
 
 ## swem运行步骤
-```
+```shell
 cd swem/preproc
 # preproc data
 python word_embedding.py -w 1
@@ -57,6 +61,12 @@ python eval.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
 # test and get submit.txt
 python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate2_classifier.pth --clf3 ./checkpoint/cate3_classifier.pth --save_path submit.txt
 ```
+## 传统机器学习运行步骤
+```
+
+
+
+```
 
 <br><br><br>
 
@@ -71,36 +81,18 @@ python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
         class_info.pkl
         label2idx.pkl
         word2idx.pkl
-        test_a.txt
-        train_a.txt
-        valid_a.txt
-        k_fold
+        test_b.txt
+        train_b.txt
+        valid_b.txt
     bagging
         bagging.py
     data_mining
         bayes.py
-        k_fold.py
         load_data.py
         mining.py
-        xgb.py
-    swem
-        eval.py
-        test.py
-        train.py
-        utils
-            dataset.py
-        preproc
-            cate2idx.py
-            data2idx.py
-            make_mask.py
-            word2idx.py
-            word2vec.py
-            word_embedding.py
+        xgb_save.py
         models
-            cate1_classifier.py
-            cate2_classifier.py
-            cate3_classifier.py
-            represent_layer.py
+            *.pkl
     output
     README.md
 ```
@@ -164,8 +156,27 @@ python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
 <br/><br/><br/><br/>
 
 --------------------------------------------------------------------------------
+## 五、结果对比
+### 机器学习
+|         模型         |        总结果         | cate1 | cate2 | cate3 |
+|--------------------:|:--------------------:|:------:|:-----:|:------|
+| XGBoost weight word    | 0.8545            |0.9520|0.8878|0.8216|
+| XGBoost weight char    | 0.8604           |0.9533|0.8919|0.8291|
+| XGBoost                | 0.8516            |0.9472|0.8850|0.8190|
+| XGBoost weight word char| 0.8666            |0.9573|0.8977|0.8360|
+| SVM                    | 0.8101            |0.9110|0.8485|0.7741|
+| Byes                   | 0.7586            |0.8849|0.8024|0.7157|
+### 深度学习
+|         模型         |        总结果         | cate1 | cate2 | cate3 |
+|--------------------:|:--------------------:|:------:|:-----:|:------|
+|  (CNN+bn+relu+fc)*1 | 0.8540               |0.9545       |0.8884      |0.8201      |
+| conv_3+conv_4+conv_5 word| 0.8698          |0.9579       |0.8993      |0.8404      |
+|  GRU*1              | 0.8468               |0.9496       |0.8799      |0.8131      |
+|  LSTM*1             | 0.8543               |0.9557       |0.8868      |0.8212      |
+|3 * concat(maxpooling, avgpooling ) -> fc -> bn -> fc -> softmax | 0.8520| ? | ?　| ? |
+|3 * concat(maxpooling, avgpooling ) -> fc -> bn -> fc -> softmax  add char| 0.8579| 0.9557|0.8888|0.8262|
 
-## 五、贡献者
+## 六、贡献者
 
 * [LOOKCC](https://github.com/LOOKCC)
 * [platoneko](https://github.com/platoneko)

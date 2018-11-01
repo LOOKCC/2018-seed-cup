@@ -15,13 +15,19 @@ from scipy.sparse import hstack
 import os
 
 
-def get_train_words(train_data):
+def get_train_words(args, train_data):
     train_set = {}
     for line in train_data:
-        # for word in line[1]:
-        #     train_set[word] = 0
-        for word in line[4]:
-            train_set[word] = 0
+        if args.use_char:
+            for word in line[1]:
+                train_set[word] = 0
+            for word in line[3]:
+                train_set[word] = 0
+        if args.use_word:
+            for word in line[2]:
+                train_set[word] = 0
+            for word in line[4]:
+                train_set[word] = 0
     return train_set
 
 
@@ -29,8 +35,12 @@ def process(data, args, train_words, label_dict, cate):
     title = []
     label = []
     for line in data:
-        temp = [x for x in line[4] if x in train_words]
-        # temp += [x for x in line[3] if x in train_words]
+        if args.use_char:
+            temp = [x for x in line[1] if x in train_words]
+            temp += [x for x in line[3] if x in train_words]
+        if args.use_word:
+            temp = [x for x in line[2] if x in train_words]
+            temp += [x for x in line[4] if x in train_words]
         title.append(' '.join(temp))
         label.append(label_dict[line[cate]])
     return title, label
@@ -39,8 +49,12 @@ def process(data, args, train_words, label_dict, cate):
 def process_test(data, args, train_words):
     title = []
     for line in data:
-        temp = [x for x in line[4] if x in train_words]
-        # temp += [x for x in line[3] if x in train_words]
+        if args.use_char:
+            temp = [x for x in line[1] if x in train_words]
+            temp += [x for x in line[3] if x in train_words]
+        if args.use_word:
+            temp = [x for x in line[2] if x in train_words]
+            temp += [x for x in line[4] if x in train_words]
         title.append(' '.join(temp))
     return title
 
@@ -87,7 +101,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
     test_leveled_data, _ = load_leveled_data(args.test_file)
     test_data_1 = get_class_data(test_leveled_data, [])
 
-    train_words = get_train_words(train_data_1)
+    train_words = get_train_words(args, train_data_1)
     key_list = list(class_info.keys())
     label2idx = {}
     for i in range(len(key_list)):
@@ -124,7 +138,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
     for key_1 in class_info.keys():
         train_data_2 = get_class_data(train_leveled_data, [key_1])
         test_data_2 = get_class_data(test_leveled_data, [key_1])
-        train_words = get_train_words(train_data_2)
+        train_words = get_train_words(args, train_data_2)
         key_list = list(class_info[key_1].keys())
         label2idx = {}
         for i in range(len(key_list)):
@@ -162,7 +176,7 @@ def train(args, num_round_1, num_round_2, num_round_3):
         for key_2 in class_info[key_1].keys():
             train_data_3 = get_class_data(train_leveled_data, [key_1, key_2])
             test_data_3 = get_class_data(test_leveled_data, [key_1, key_2])
-            train_words = get_train_words(train_data_3)
+            train_words = get_train_words(args, train_data_3)
             key_list = list(class_info[key_1][key_2].keys())
             label2idx = {}
             for i in range(len(key_list)):
@@ -215,9 +229,6 @@ def valid(args):
     title = local_data[1].transform(test_title)
     dtest = xgb.DMatrix(title)
     pred = local_data[0].predict(dtest)
-    # pred = local_data[0].predict(dtest, output_margin=True)
-    # print(pred.shape)
-    # print(pred[0])
 
     for i in range(len(test_data_1)):
         test_data_1[i].append(key_list[int(pred[i])])
@@ -289,10 +300,20 @@ if __name__ == '__main__':
     parser.add_argument('--class_info', type=str, default='../data/class_info.pkl',
                         help='word to idx file, which has deleted the uncommonly uesd words')
     parser.add_argument('--test', action='store_true', help='train or test')
+    parser.add_argument('--use_word', action='store_true', help='use word to train')
+    parser.add_argument('--use_char', action='store_true', help='use char to train')
     parser.add_argument('--epoch', type=int, default=100,
                         help='epoch to train')
 
     args = parser.parse_args()
+    if args.use_char and args.use_char:
+        print("You can only use word or char, not both")
+        exit(0)
+    if (not args.use_char) and (not args.use_word):
+        print("Please choose word or char to train")
+        exit(0) 
+    if not os.path.exists(args.save_path):
+        os.mkdir(args.save_path)
 
     if not args.test:
         train(args, args.epoch, args.epoch, args.epoch)
@@ -312,7 +333,7 @@ if __name__ == '__main__':
             f.write("item_id\tcate1_id\tcate2_id\tcate3_id\n")
             for x in test_result:
                 f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\n')
-                # f.write(x[0]+'\t'+str(x[5])+'\t'+str(x[6])+'\t'+str(x[7])+'\t'+str(x[8])+'\t'+str(x[9])+'\t'+str(x[10])+'\n')
+
         # make the order the same with test_file
         finall = []
         with open("../output/submit.txt", 'r') as f:
