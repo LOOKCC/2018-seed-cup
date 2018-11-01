@@ -5,6 +5,7 @@ import os
 import torch
 import argparse
 import pickle
+import numpy as np
 import torch.nn.functional as F
 from torch import nn, optim
 from datetime import datetime
@@ -12,7 +13,6 @@ from sklearn.metrics import f1_score, accuracy_score
 
 from load_data import load_dataset
 from models.model import Model
-from models.RCNN import RCNN
 
 
 class CateManager(object):
@@ -25,9 +25,9 @@ class CateManager(object):
             self.info = pickle.load(fp)
         self.vocabs = [L.vocab for L in LABEL]
         cate_num = [len(vocab) for vocab in self.vocabs]
-        device = torch.device(args.device)
-        self.cate1to2 = torch.zeros(cate_num[0], cate_num[1]).to(device)
-        self.cate2to3 = torch.zeros(cate_num[1], cate_num[2]).to(device)
+        self.device = torch.device(args.device)
+        self.cate1to2 = torch.zeros(cate_num[0], cate_num[1]).to(self.device)
+        self.cate2to3 = torch.zeros(cate_num[1], cate_num[2]).to(self.device)
         self.merge = args.merge
         for i in self.info:
             idx1 = self.vocabs[0].stoi[str(i)]
@@ -39,6 +39,33 @@ class CateManager(object):
                         for k in self.info[i][j].keys()]
                 self.cate2to3[idx2, idx3] = 1
 
+    def get_weights(self, LABEL):
+        weights = []
+        for i in range(len(LABEL)):
+            freqs = LABEL[i].vocab.freqs
+            itos = LABEL[i].vocab.itos
+            if i == 0:
+                num = sum(freqs.values())
+                weights.append(torch.Tensor(
+                    [num/freqs[itos[j]]/len(freqs) for j in range(len(freqs))]).to(self.device))
+            elif i == 1:
+                weights.append(torch.zeros(len(freqs)).to(self.device))
+                freq_tensor = torch.Tensor(
+                    sorted(freqs.values(), reverse=True)).to(self.device)
+                for j in range(len(LABEL[i-1].vocab.freqs)):
+                    num = LABEL[i-1].vocab.freqs[LABEL[i-1].vocab.itos[j]]
+                    weights[-1] += self.cate1to2[j] / \
+                        freq_tensor * num / sum(self.cate1to2[j]).item()
+            else:
+                weights.append(torch.zeros(len(freqs)).to(self.device))
+                freq_tensor = torch.Tensor(
+                    sorted(freqs.values(), reverse=True)).to(self.device)
+                for j in range(len(LABEL[i-1].vocab.freqs)):
+                    num = LABEL[i-1].vocab.freqs[LABEL[i-1].vocab.itos[j]]
+                    weights[-1] += self.cate2to3[j] / \
+                        freq_tensor * num / sum(self.cate2to3[j]).item()
+        return weights
+
     def merge_weights(self, cate_out, label=None):
         if self.merge:
             # cate_out[1] = cate_out[1] * self.cate1to2[cate_out[0].max(1)[1]]
@@ -48,22 +75,27 @@ class CateManager(object):
             # cate_out[1] = cate_out[1] * torch.mm(F.softmax(cate_out[0]), self.cate1to2)
             # cate_out[2] = cate_out[2] * torch.mm(F.softmax(cate_out[1]), self.cate2to3)
             if label is not None:
-                cate_out[1] = cate_out[1] * (self.cate1to2[label[0]]*101-100)
-                cate_out[2] = cate_out[2] * (self.cate2to3[label[1]]*101-100)
+                cate_out[1] = cate_out[1] * (self.cate1to2[label[0]]*2-1)
+                cate_out[2] = cate_out[2] * (self.cate2to3[label[1]]*2-1)
+                # cate_out[1][np.where(self.cate1to2[label[0]] == 0)] = -100
+                # cate_out[2][np.where(self.cate2to3[label[1]] == 0)] = -100
             else:
                 cate_out[1] = cate_out[1] * \
-                    (self.cate1to2[cate_out[0].max(1)[1]]*101-100)
+                    (self.cate1to2[cate_out[0].max(1)[1]]*2-1)
                 cate_out[2] = cate_out[2] * \
-                    (self.cate2to3[cate_out[1].max(1)[1]]*101-100)
+                    (self.cate2to3[cate_out[1].max(1)[1]]*2-1)
+                # cate_out[1][np.where(
+                #     self.cate1to2[cate_out[0].max(1)[1]] == 0)] = -100
+                # cate_out[2][np.where(
+                #     self.cate2to3[cate_out[1].max(1)[1]] == 0)] = -100
         return cate_out
 
 
 def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
     # get device
     device = torch.device(args.device)
-    model = RCNN(TEXT, LABEL, dropout=args.dropout,
-                 freeze=args.freeze).to(device)
-    criterion = [nn.CrossEntropyLoss().to(device) for _ in range(len(LABEL))]
+    model = Model(TEXT, LABEL, dropout=args.dropout,
+                  freeze=args.freeze).to(device)
     start_epoch = 0
 
     parameters = [x for x in model.parameters() if x.requires_grad == True]
@@ -75,10 +107,11 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
         optimizer.load_state_dict(checkpoint['optim'])
         start_epoch = checkpoint['epoch']
 
+    weights = cate_manager.get_weights(LABEL)
+
     # train
     model = model.train()
     print('====   Training..   ====')
-    weight = (0.2, 0.3, 0.5)
     for epoch in range(start_epoch, start_epoch+args.check_epoch):
         print('----    Epoch: %d    ----' % (epoch, ))
         loss_sum = 0
@@ -87,24 +120,26 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
         for iter_num, batch in enumerate(train_iter):
             label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
             optimizer.zero_grad()
-            output = model(
-                torch.cat((batch.title_words, batch.disc_words), dim=1))
-            output = cate_manager.merge_weights(output, label)
-            loss = 0
+            output, result = model(batch)
+            output = [cate_manager.merge_weights(x, label) for x in output]
+            result = cate_manager.merge_weights(result)
             for i in range(len(LABEL)):
-                loss = criterion[i](output[i], label[i])
-                # loss += criterion[i](output[i], label[i]) * weight[i]
-                all_pred[i].extend(output[i].max(1)[1].tolist())
+                for j in range(len(output)):
+                    loss = F.cross_entropy(
+                        output[j][i], label[i], weight=weights[i])
+                    loss.backward(retain_graph=True)
+                    loss_sum += loss.item()
+                all_pred[i].extend(result[i].max(1)[1].tolist())
                 all_label[i].extend(label[i].tolist())
-                loss.backward(retain_graph=True if i < 2 else False)
             optimizer.step()
-            loss_sum += loss.item()
         print('Loss = {}  \ttime: {}'.format(loss_sum/(iter_num+1),
                                              datetime.now()-start_time))
         print(*['Cate{} F1 score: {}  \t'.format(i+1, f1_score(all_label[i],
-                                                               all_pred[i], average='weighted')) for i in range(len(LABEL))])
+                                                               all_pred[i], average='macro')) for i in range(len(LABEL))])
         if args.snapshot_path is None:
             snapshot_path = 'snapshot/model_{}.pth'.format(epoch)
+        if not os.path.exists(os.path.dirname(args.snapshot_path)):
+            os.makedirs(os.path.dirname(args.snapshot_path))
         checkpoint = {
             'model': model.state_dict(),
             'optim': optimizer.state_dict(),
@@ -119,8 +154,8 @@ def train(args, train_iter, TEXT, LABEL, cate_manager, checkpoint=None):
 def evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint):
     # get device
     device = torch.device(args.device)
-    model = TextCNN(TEXT, LABEL, dropout=args.dropout,
-                    freeze=args.freeze).to(device)
+    model = Model(TEXT, LABEL, dropout=args.dropout,
+                  freeze=args.freeze).to(device)
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model'])
 
@@ -131,23 +166,22 @@ def evaluate(args, valid_iter, TEXT, LABEL, cate_manager, checkpoint):
     all_pred, all_label = [[], [], []], [[], [], []]
     for iter_num, batch in enumerate(valid_iter):
         label = (batch.cate1_id, batch.cate2_id, batch.cate3_id)
-        output = model(
-            torch.cat((batch.title_words, batch.disc_words), dim=1), training=False)
-        output = cate_manager.merge_weights(output)
-        for i in range(len(output)):
-            all_pred[i].extend(output[i].max(1)[1].tolist())
+        output, result = model(batch, training=False)
+        result = cate_manager.merge_weights(result)
+        for i in range(len(result)):
+            all_pred[i].extend(result[i].max(1)[1].tolist())
             all_label[i].extend(label[i].tolist())
     print('time: {}'.format(datetime.now()-start_time))
     print(*['Cate{} F1 score: {}  \t'.format(i+1, f1_score(all_label[i],
-                                                           all_pred[i], average='weighted')) for i in range(len(LABEL))])
+                                                           all_pred[i], average='macro')) for i in range(len(LABEL))])
 
 
 # @torch.no_grad()
 def test(args, test_iter, TEXT, LABEL, ID, cate_manager, checkpoint):
     # get device
     device = torch.device(args.device)
-    model = TextCNN(TEXT, LABEL, dropout=args.dropout,
-                    freeze=args.freeze).to(device)
+    model = Model(TEXT, LABEL, dropout=args.dropout,
+                  freeze=args.freeze).to(device)
     if checkpoint is not None:
         model.load_state_dict(checkpoint['model'])
 
@@ -158,11 +192,10 @@ def test(args, test_iter, TEXT, LABEL, ID, cate_manager, checkpoint):
     all_pred, ids = [[], [], []], []
     for iter_num, batch in enumerate(test_iter):
         ids.extend(batch.item_id.tolist())
-        output = model(
-            torch.cat((batch.title_words, batch.disc_words), dim=1), training=False)
-        output = cate_manager.merge_weights(output)
-        for i in range(len(output)):
-            all_pred[i].extend(output[i].max(1)[1].tolist())
+        output, result = model(batch, training=False)
+        result = cate_manager.merge_weights(result)
+        for i in range(len(result)):
+            all_pred[i].extend(result[i].max(1)[1].tolist())
     print('time: {}'.format(datetime.now()-start_time))
     with open('../data/out.txt', 'w') as fp:
         fp.write('item_id\tcate1_id\tcate2_id\tcate3_id\n')
@@ -171,7 +204,7 @@ def test(args, test_iter, TEXT, LABEL, ID, cate_manager, checkpoint):
             fp.write(
                 '\t'.join([LABEL[j].vocab.itos[all_pred[j][i]] for j in range(3)]))
             fp.write('\n')
-    print('Result saved in ../data/out.txt')
+    print('Result saved in ../../data/out.txt')
 
 
 if __name__ == '__main__':
@@ -182,8 +215,8 @@ if __name__ == '__main__':
                         help='Device to use (default="cuda:0")')
     parser.add_argument('--snapshot', default=None,
                         help='Path to save model to save (default="checkpoints/crnn.pth")')
-    parser.add_argument('--batch_size', type=int, default=32,
-                        help='Input batch size (default=128)')
+    parser.add_argument('--batch_size', type=int, default=64,
+                        help='Input batch size (default=64)')
 
     parser.add_argument('--snapshot_path', default=None,
                         help='Path to save model (default="snapshot/model_{epoch}.pth")')

@@ -15,7 +15,7 @@ class CNN(nn.Module):
         embedding_dim = TEXT.vocab.vectors.size(1)
         self.embedding = nn.Embedding(len(TEXT.vocab), embedding_dim)
         self.convs = nn.ModuleList(
-            [Conv(embedding_dim, c, kernel_size, 1, 2, dim=1, numblocks=1) for _ in range(3)])
+            [Conv(embedding_dim, c, kernel_size, 1, 2, dim=1, numblocks=1, bn=False) for _ in range(3)])
         self.fcs = nn.ModuleList(
             [nn.Linear(c, len(LABEL[i].vocab)) for i in range(len(LABEL))])
         self._initialize_weights()

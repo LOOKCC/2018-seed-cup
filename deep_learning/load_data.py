@@ -4,6 +4,7 @@ import os
 import sys
 import torch
 import pickle
+import random
 import numpy as np
 import torch.nn as nn
 from torchtext import data
@@ -11,9 +12,15 @@ from torchtext import datasets
 from torchtext.vocab import Vectors
 
 
+def tokenize(x):
+    x = x.split(',')
+    random.shuffle(x)
+    return x
+
+
 def load_dataset(args):
     TEXT = data.Field(sequential=True, use_vocab=True,
-                      tokenize=lambda x: x.split(','), batch_first=True)
+                      tokenize=tokenize, batch_first=True)
     LABEL = [data.Field(sequential=False, use_vocab=True,
                         unk_token=None) for _ in range(3)]
     ID = data.Field(sequential=False, use_vocab=True)
@@ -27,21 +34,23 @@ def load_dataset(args):
     train_data, valid_data = data.TabularDataset.splits(
         path=args.root,  # 数据存放的根目录
         root=args.root,  # 数据存放的根目录
-        train='train_a.txt', validation='valid_a.txt',
+        train='train.txt', validation='valid_b.txt',
         format='tsv',
         skip_header=True,  # 如果你的csv有表头, 确保这个表头不会作为数据处理
         fields=datafields)
     test_data = data.TabularDataset(
-        path=os.path.join(args.root, 'test_a.txt'),
+        path=os.path.join(args.root, 'test_b.txt'),
         format='tsv',
         skip_header=True,
         fields=datafields[:5])
 
+    if not os.path.exists('embedding/vec_cache'):
+        os.makedirs('embedding/vec_cache')
     TEXT.build_vocab(train_data, valid_data, test_data, vectors=Vectors(
         'embedding/embedding_256.txt', cache='embedding/vec_cache/'))
     for L in LABEL:
         L.build_vocab(train_data, valid_data)
-    ID.build_vocab(train_data, valid_data, test_data)
+    ID.build_vocab(test_data)
 
     train_iter, valid_iter = data.BucketIterator.splits(
         (train_data, valid_data),

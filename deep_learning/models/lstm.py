@@ -3,31 +3,24 @@ import torch.nn as nn
 import torch.nn.init as init
 import torch.nn.functional as F
 from torch.autograd import Variable
-from .conv import Conv
 
 
-class RCNN(nn.Module):
+class LSTM(nn.Module):
 
-    def __init__(self, TEXT, LABEL, dropout=0.2, freeze=True):
-        super(RCNN, self).__init__()
-        cnn_out = 32
-        rnn_out = 64
+    def __init__(self, hidden_dim, TEXT, LABEL, dropout=0.2, freeze=True):
+        super(LSTM, self).__init__()
         self.dropout = dropout
         embedding_dim = TEXT.vocab.vectors.size(1)
         self.embedding = nn.Embedding(len(TEXT.vocab), embedding_dim)
-
         self.lstm = nn.ModuleList(
-            [nn.LSTM(cnn_out, rnn_out, batch_first=True, bidirectional=True) for _ in range(3)])
-
-        self.conv_1 = nn.ModuleList(
-            [Conv(embedding_dim, cnn_out, 1, 1, 0, dim=1, numblocks=1) for _ in range(3)])
-        self.conv_3 = nn.ModuleList(
-            [Conv(embedding_dim, cnn_out, 3, 1, 1, dim=1, numblocks=1) for _ in range(3)])
-        self.conv_5 = nn.ModuleList(
-            [Conv(embedding_dim, cnn_out, 5, 1, 2, dim=1, numblocks=1) for _ in range(3)])
-
+            [nn.LSTM(embedding_dim, hidden_dim[i], batch_first=True, bidirectional=True) for i in range(3)])
+        self.lns = nn.ModuleList(
+            [nn.LayerNorm(2*hidden_dim[i]) for i in range(3)])
+        # self.fcs = nn.ModuleList(
+        #     [nn.Linear(2*hidden_dim[i], 2*hidden_dim[i]) for i in range(len(LABEL))])
+        # self.bns = nn.ModuleList([nn.BatchNorm1d(2*hidden_dim[i]) for i in range(3)])
         self.fcs = nn.ModuleList(
-            [nn.Linear(2*rnn_out, len(LABEL[i].vocab)) for i in range(len(LABEL))])
+            [nn.Linear(2*hidden_dim[i], len(LABEL[i].vocab)) for i in range(len(LABEL))])
         self._initialize_weights()
         self.embedding.weight.data.copy_(TEXT.vocab.vectors)
         if freeze:
@@ -35,20 +28,16 @@ class RCNN(nn.Module):
 
     def forward(self, x, training=True):
         x = self.embedding(x)
-
-        x = x.permvimute(0, 2, 1)        
-        x = [self.conv_3[i](x) for i in range(3)]  # [(N, Co, W), ...]*len(Ks)
-        x = x.permvimute(0, 2, 1)        
-
-        x = [self.lstm[i](x)[0].permute(0, 2, 1).contiguous()
-            for i in range(3)]  # [(N, Co, W), ...]*len(Ks)
-
+        x = [self.lns[i](self.lstm[i](x)[0]).permute(0, 2, 1).contiguous()
+             for i in range(3)]  # [(N, Co, W), ...]*len(Ks)
         x = [F.max_pool1d(x[i], x[i].size(2)).squeeze(2)
              for i in range(3)]  # [(N, Co), ...]*len(Ks)
 
         x = [F.dropout(x[i], self.dropout, training=training)
              for i in range(3)] if self.dropout else x  # (N, len(Ks)*Co)
         x = [self.fcs[i](x[i]) for i in range(3)]  # (N, C)
+        # x = [F.relu(self.bns[i](x[i])) for i in range(3)]  # (N, C)
+        # x = [self.fcs2[i](x[i]) for i in range(3)]  # (N, C)
         return x
 
     def _initialize_weights(self):
