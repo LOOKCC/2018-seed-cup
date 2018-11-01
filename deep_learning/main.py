@@ -222,8 +222,8 @@ if __name__ == '__main__':
                         help='Path to save model (default="snapshot/model_{epoch}.pth")')
     parser.add_argument('--epoch_num', type=int, default=50,
                         help='Number of epochs to train for (default=50)')
-    parser.add_argument('--check_epoch', type=int, default=5,
-                        help='Epoch to save and test (default=5)')
+    parser.add_argument('--check_epoch', type=int, default=1,
+                        help='Epoch to save and test (default=1)')
     parser.add_argument('--lr', type=float, default=0.001,
                         help='Learning rate for Optimizer (default=0.001)')
     parser.add_argument('--weight_decay', type=float, default=0,

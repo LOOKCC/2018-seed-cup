@@ -21,10 +21,15 @@ class Model(nn.Module):
         hidden_dims = [[128, 128, 128]]  # , [128, 128, 128]]
         self.models = nn.ModuleList([CNN(kernel_size[i], *args, **kwargs)
                                      for i in range(len(kernel_size))])
+        # if using lstm or gru         GRU
+        # self.models = nn.ModuleList([LSTM(hidden_dims[i], *args, **kwargs)
+        #                              for i in range(len(hidden_dims))])
 
     def forward(self, batch, training=True):
         x = ([torch.cat((batch.title_words, batch.disc_words), dim=1)]*3 +
              [torch.cat((batch.title_chars, batch.disc_chars), dim=1)]*3)
+        # if using lstm or gru
+        # x = [torch.cat((batch.title_words, batch.disc_words), dim=1)]
         y = []
         for i in range(len(x)):
             output = self.models[i](x[i])

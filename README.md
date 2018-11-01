@@ -24,6 +24,7 @@
 ### 运行步骤
 
 ## xgboost运行步骤
+
 ```shell
 cd data_mining
 # Please put the test, valid, train data in ../data, and the following will generate a file named class_info.pkl in ../data for training
@@ -37,6 +38,7 @@ python xgb_save.py --test_file=../data/test_b.txt --save_path=./models_word --te
 ```
 
 ## swem运行步骤
+
 ```shell
 cd swem/preproc
 # preproc data
@@ -61,11 +63,22 @@ python eval.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
 # test and get submit.txt
 python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate2_classifier.pth --clf3 ./checkpoint/cate3_classifier.pth --save_path submit.txt
 ```
-## 传统机器学习运行步骤
-```
 
+## 常用深度学习模型运行步骤
 
+```shell
+# get embedding data as above ...
+cd swem/preproc
+TODO!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
 
+cd deep_learning
+mkdir embedding
+mv ../swem/preproc/embedding_256.txt embedding
+vim models/model.py  # cnn or lstm/gru
+# train and valid
+python main.py --device=cuda:0 --merge
+# eval
+python main.py --device=cuda:0 --merge --test --snapshot=snapshot/model_{number}.pth
 ```
 
 <br><br><br>
@@ -88,11 +101,30 @@ python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
         bagging.py
     data_mining
         bayes.py
+        svm.py
         load_data.py
         mining.py
         xgb_save.py
         models
             *.pkl
+    deep_learning
+        embedding
+            embedding_256.txt
+            vec_cache
+        models
+            model.py
+            cnn.py
+            conv.py
+            gru.py
+            lstm.py
+            rcnn.py
+            rescnn.py
+            res_lstm.py
+            textcnn.py
+        snapshot
+            model_{epoch}.pth
+        main.py
+        load_data.py
     output
     README.md
 ```
@@ -129,7 +161,7 @@ python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
 
 ## 四、深度学习主要思路
 
-深度学习主要先进行词向量的预训练, 之后采用TextCNN和基于swem(Baseline Needs More Love: On Simple Word-Embedding-Based Models and Associated Pooling Mechanisms(ACL 2018))作为特征表示的模型进行训练和参数调优.
+深度学习主要先进行词向量的预训练, 之后采用TextCNN、LSTM、GRU等和基于swem(Baseline Needs More Love: On Simple Word-Embedding-Based Models and Associated Pooling Mechanisms(ACL 2018))作为特征表示的模型进行训练和参数调优.
 
 ### 数据的读取&处理
 
@@ -141,17 +173,22 @@ python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
 
 ### 模型选择
 
-此次学习目标是进行文本分类, 在初赛尝试naive bayes发现效果并不差, 猜想文本的词序对文本分类的影响不大, 于是尝试采用swem作为特征表示层即仅使用pooling层处理文本词向量, 忽略词序对预测结果的影响.
+此次学习目标是进行文本分类, 首先尝试常用的文本分类模型，如TextCNN、LSTM、GRU等. 同时，在初赛尝试naive bayes发现效果并不差, 猜想文本的词序对文本分类的影响不大, 于是尝试采用swem作为特征表示层即仅使用pooling层处理文本词向量, 忽略词序对预测结果的影响.
 
 ### 优化思路
 
-- 表示层： 最初仅使用max pooling效果一般, 于是考虑使用swem论文中的swem cat, 即将max pooling和avg pooling得到的向量进行concat, 效果有所提升, 于是之后的训练都采用swem cat作为表示层. 训练输入数据尝试过仅使用word title, 使用word title和word desciption, 以及使用训练集的所有word, char的数据. 
-
-- 分类器: 最初使用分级multi task训练, 即cate1, cate2, cate3共用相同特征表示层，其中loss = 0.1 * cate1_loss + 0.3 * cate2_loss + 0.6 * cate3_loss. 后考虑到数据集特征, 尝试对cate1, cate2, cate3分类器并行训练, 各自拥有自己的特征表示层, 得到了当前最佳结果.
+- SWEM
+  - 表示层： 最初仅使用max pooling效果一般, 于是考虑使用swem论文中的swem cat, 即将max pooling和avg pooling得到的向量进行concat, 效果有所提升, 于是之后的训练都采用swem cat作为表示层. 训练输入数据尝试过仅使用word title, 使用word title和word description, 以及使用训练集的所有word, char的数据. 
+  - 分类器: 最初使用分级multi task训练, 即cate1, cate2, cate3共用相同特征表示层，其中loss = 0.1 * cate1_loss + 0.3 * cate2_loss + 0.6 * cate3_loss. 后考虑到数据集特征, 尝试对cate1, cate2, cate3分类器并行训练, 各自拥有自己的特征表示层, 得到了当前最佳结果.
+- 其他模型
+  - LSTM、GRU、TextCNN在word数据上效果类似，但在char数据上TextCNN更好。同时，TextCNN原论文中采用大小为3、4、5的卷积核，最后将特征相连。但若分别训练三个卷积层，结果相加将得到更好的效果
+  - 同时也尝试了dropout、batch normalization、layer normalization、weight decay等，TextCNN在添加 batch normalization 层后效果提升明显。
+  - 测试发现，将title与description连接后输入，比单独输入后融合或者只用其中一个效果要好。
 
 ### 最后测试
 
-最终测试采用swem cat作为表示层, 对三个分类器分别进行训练, 输入数据仅使用训练集的word数据并对每条文本数据使用0.2的几率drop其中的部分单词作为数据增强.
+对swem采用swem cat作为表示层, 对三个分类器分别进行训练, 输入数据仅使用训练集的word数据并对每条文本数据使用0.2的几率drop其中的部分单词作为数据增强.  
+对lstm与gru只使用word数据，cnn使用全部数据并将3、4、5大小的卷积层输出结果相加。
 
 <br/><br/><br/><br/>
 

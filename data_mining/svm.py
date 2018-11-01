@@ -27,7 +27,13 @@ def process(data, level=0):
 def predict(train_leveled_data, test_data, classes):
     pipeline = Pipeline([('vect', CountVectorizer()),
                          # ('tfidf', TfidfTransformer()),
-                         ('clf', MultinomialNB()),
+                         ('clf', SGDClassifier(loss='hinge',
+                                               penalty='l2',
+                                               alpha=5e-5 * 4.5**len(classes),
+                                               max_iter=10,
+                                               shuffle=True,
+                                               class_weight='balanced',
+                                               random_state=42)),
                          ])
     data = get_class_data(train_leveled_data, classes)
     title, label = process(data, len(classes))[1:]
