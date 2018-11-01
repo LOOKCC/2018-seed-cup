@@ -18,9 +18,9 @@ import os
 def get_train_words(train_data):
     train_set = {}
     for line in train_data:
-        for word in line[1]:
-            train_set[word] = 0
-        for word in line[3]:
+        # for word in line[1]:
+        #     train_set[word] = 0
+        for word in line[4]:
             train_set[word] = 0
     return train_set
 
@@ -29,8 +29,8 @@ def process(data, args, train_words, label_dict, cate):
     title = []
     label = []
     for line in data:
-        temp = [x for x in line[1] if x in train_words]
-        temp += [x for x in line[3] if x in train_words]
+        temp = [x for x in line[4] if x in train_words]
+        # temp += [x for x in line[3] if x in train_words]
         title.append(' '.join(temp))
         label.append(label_dict[line[cate]])
     return title, label
@@ -39,8 +39,8 @@ def process(data, args, train_words, label_dict, cate):
 def process_test(data, args, train_words):
     title = []
     for line in data:
-        temp = [x for x in line[1] if x in train_words]
-        temp += [x for x in line[3] if x in train_words]
+        temp = [x for x in line[4] if x in train_words]
+        # temp += [x for x in line[3] if x in train_words]
         title.append(' '.join(temp))
     return title
 

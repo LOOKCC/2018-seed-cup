@@ -15,7 +15,7 @@
 ### 依赖库
 
 * python-xgboost
-* python-pytorch-suda
+* python-pytorch-cuda
 * python-torchtext
 * python-numpy
 * python-gensim
@@ -137,7 +137,7 @@ python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
 
 ## 四、深度学习主要思路
 
-深度学习主要先进行词向量的预训练, 之后采用基于swem(Baseline Needs More Love: On Simple Word-Embedding-Based Models and Associated Pooling Mechanisms(ACL 2018))作为特征表示的模型进行训练和参数调优.
+深度学习主要先进行词向量的预训练, 之后采用TextCNN和基于swem(Baseline Needs More Love: On Simple Word-Embedding-Based Models and Associated Pooling Mechanisms(ACL 2018))作为特征表示的模型进行训练和参数调优.
 
 ### 数据的读取&处理
 
@@ -145,11 +145,11 @@ python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
 
 2. 数据集中word, char以及cate id到idx的处理
 
-3. 针对此次比赛数据的特性, 挖掘出cate1->cate2->cate3的关联, 生成mask.pkl用于之后对cate预测的筛选
+3. 针对此次比赛数据的特性, 挖掘出cate1->cate2->cate3的关联, 生成mask.pkl与class_info.pkl用于之后对cate预测的筛选
 
 ### 模型选择
 
-此次学习目标是进行文本分类, 在进行最初的naive bayes后发现效果并不差, 猜想文本的词序对文本分类的影响不大, 于是尝试采用swem作为特征表示层即仅使用pooling层处理文本词向量, 忽略词序对预测结果的影响.
+此次学习目标是进行文本分类, 在初赛尝试naive bayes发现效果并不差, 猜想文本的词序对文本分类的影响不大, 于是尝试采用swem作为特征表示层即仅使用pooling层处理文本词向量, 忽略词序对预测结果的影响.
 
 ### 优化思路
 
@@ -173,5 +173,5 @@ python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate
 
 From HUST, 我们没有队名
 
-2018.10.22 Finished.
+2018.11.01 Finished.
 
