@@ -43,25 +43,50 @@ python xgb_save.py --test_file=../data/test_b.txt --save_path=./models_word --te
 cd swem/preproc
 # preproc data
 python word_embedding.py -w 1
-python word2vec.py
-python word2idx.py
+python word_embedding.py -w 0
+python word2vec.py -w 1
+python word2vec.py -w 0
+python word2idx.py -w 1
+python word2idx.py -w 0
 python cate2idx.py
-python data2idx.py
+python data2idx.py -w 1 --cate
+python data2idx.py -w 0
 python make_mask.py
 
 cd ..
 # train models
-python train.py -m 1 --h_d 64 -d --ckpt ./checkpoint/cate1_classifier.pth
-python train.py -m 2 --h_d 128 -d --ckpt ./checkpoint/cate2_classifier.pth
-python train.py -m 3 --h_d 256 -d --ckpt ./checkpoint/cate3_classifier.pth
+# -m for cate n(1, 2, 3)
+# -w for word(1) or char(0)
+# --hier for swemhier(1) or swemcat(0)
+python train.py -m 1 -w 1 --h_d 64 --embedding_dim 512 --ckpt w_cate1.pth
+python train.py -m 2 -w 1 --h_d 256 --embedding_dim 512 --ckpt w_cate2.pth
+python train.py -m 3 -w 1 --h_d 512 --embedding_dim 512 --ckpt w_cate3.pth
+python train.py -m 1 -w 0 --h_d 64 --embedding_dim 256 --ckpt c_cate1.pth
+python train.py -m 2 -w 0 --h_d 256 --embedding_dim 256 --ckpt c_cate2.pth
+python train.py -m 3 -w 0 --h_d 512 --embedding_dim 256 --ckpt c_cate3.pth
+python train.py -m 1 -w 1 --h_d 64 --hier 1 --embedding_dim 512 --ckpt hier_w_cate1.pth
+python train.py -m 2 -w 1 --h_d 256 --hier 1 --embedding_dim 512 --ckpt hier_w_cate2.pth
+python train.py -m 3 -w 1 --h_d 512 --hier 1 --embedding_dim 512 --ckpt hier_w_cate3.pth
+python train.py -m 1 -w 0 --h_d 64 --hier 1 --embedding_dim 256 --ckpt hier_c_cate1.pth
+python train.py -m 2 -w 0 --h_d 256 --hier 1 --embedding_dim 256 --ckpt hier_c_cate2.pth
+python train.py -m 3 -w 0 --h_d 512 --hier 1 --embedding_dim 256 --ckpt hier_c_cate3.pth
 # if resuming training
-python train.py -m 1 --ckpt ./checkpoint/cate1_classifier.pth -r
-python train.py -m 2 --ckpt ./checkpoint/cate2_classifier.pth -r
-python train.py -m 3 --ckpt ./checkpoint/cate3_classifier.pth -r
+python train.py -m 1 -w 1 --ckpt w_cate1.pth -r
+python train.py -m 2 -w 1 --ckpt w_cate2.pth -r
+python train.py -m 3 -w 1 --ckpt w_cate3.pth -r
+python train.py -m 1 -w 0 --ckpt c_cate1.pth -r
+python train.py -m 2 -w 0 --ckpt c_cate2.pth -r
+python train.py -m 3 -w 0 --ckpt c_cate3.pth -r
+python train.py -m 1 -w 1 --ckpt hier_w_cate1.pth -r
+python train.py -m 2 -w 1 --ckpt hier_w_cate2.pth -r
+python train.py -m 3 -w 1 --ckpt hier_w_cate3.pth -r
+python train.py -m 1 -w 0 --ckpt hier_c_cate1.pth -r
+python train.py -m 2 -w 0 --ckpt hier_c_cate2.pth -r
+python train.py -m 3 -w 0 --ckpt hier_c_cate3.pth -r
 # eval
-python eval.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate2_classifier.pth --clf3 ./checkpoint/cate3_classifier.pth
+python eval.py
 # test and get submit.txt
-python test.py --clf1 ./checkpoint/cate1_classifier.pth --clf2 ./checkpoint/cate2_classifier.pth --clf3 ./checkpoint/cate3_classifier.pth --save_path submit.txt
+python test.py --save_path ../output/swem_wordchar_out.txt
 ```
 
 ## 常用深度学习模型运行步骤
@@ -125,6 +150,37 @@ python main.py --device=cuda:0 --merge --test --snapshot=snapshot/model_{number}
             model_{epoch}.pth
         main.py
         load_data.py
+        swem
+        models
+            __init__.py
+            represent_layer.py
+            cate1_classifier.py
+            cate2_classifier.py
+            cate3_classifier.py
+        preproc
+            word_embedding.py
+            word2idx.py
+            word2vec.py
+            cate2idx.py
+            data2idx.py
+            make_mask.py
+        utils
+            __init__.py
+            dataset.py
+            timer.py
+            class_weight.py
+        checkpoint
+            *.pth
+        train.py
+        eval.py
+        test.py
+    glu
+        models
+            __init__.py
+            glu.py
+            cate1_classifier.py
+            cate2_classifier.py
+            cate3_classifier.py
     output
     README.md
 ```
@@ -161,7 +217,7 @@ python main.py --device=cuda:0 --merge --test --snapshot=snapshot/model_{number}
 
 ## 四、深度学习主要思路
 
-深度学习主要先进行词向量的预训练, 之后采用TextCNN、LSTM、GRU等和基于swem(Baseline Needs More Love: On Simple Word-Embedding-Based Models and Associated Pooling Mechanisms(ACL 2018))作为特征表示的模型进行训练和参数调优.
+深度学习主要先进行词向量的预训练, 之后采用TextCNN、LSTM、GRU、GLU(Gated Linear Unit)等和基于swem(Baseline Needs More Love: On Simple Word-Embedding-Based Models and Associated Pooling Mechanisms(ACL 2018))作为特征表示的模型进行训练和参数调优.
 
 ### 数据的读取&处理
 
@@ -173,22 +229,25 @@ python main.py --device=cuda:0 --merge --test --snapshot=snapshot/model_{number}
 
 ### 模型选择
 
-此次学习目标是进行文本分类, 首先尝试常用的文本分类模型，如TextCNN、LSTM、GRU等. 同时，在初赛尝试naive bayes发现效果并不差, 猜想文本的词序对文本分类的影响不大, 于是尝试采用swem作为特征表示层即仅使用pooling层处理文本词向量, 忽略词序对预测结果的影响.
+此次学习目标是进行文本分类, 首先尝试常用的文本分类模型，如TextCNN、LSTM、GRU等. 同时，在初赛尝试naive bayes发现效果并不差, 猜想文本的词序对文本分类的影响不大, 于是尝试采用swem作为特征表示层即仅使用pooling层处理文本词向量, 忽略词序对预测结果的影响. 之后还使用了swem hier, glu等较新的特征提取方法作为表示层.
 
 ### 优化思路
 
 - SWEM
-  - 表示层： 最初仅使用max pooling效果一般, 于是考虑使用swem论文中的swem cat, 即将max pooling和avg pooling得到的向量进行concat, 效果有所提升, 于是之后的训练都采用swem cat作为表示层. 训练输入数据尝试过仅使用word title, 使用word title和word description, 以及使用训练集的所有word, char的数据. 
-  - 分类器: 最初使用分级multi task训练, 即cate1, cate2, cate3共用相同特征表示层，其中loss = 0.1 * cate1_loss + 0.3 * cate2_loss + 0.6 * cate3_loss. 后考虑到数据集特征, 尝试对cate1, cate2, cate3分类器并行训练, 各自拥有自己的特征表示层, 得到了当前最佳结果.
+  - 表示层：尝试了swemcat(maxpooling+avgpooling), swemhier(k=3, 5的avgpooling之后进行maxpooling)以及将两者结合的模型, 该族模型在char数据上表现尚可, 故使用了word和char的全部数据进行训练和预测.
+  - 分类器: 考虑到数据集特征, 尝试对cate1, cate2, cate3分类器并行训练, 各自拥有自己的特征表示层, 得到了该模型最佳结果.
 - 其他模型
   - LSTM、GRU、TextCNN在word数据上效果类似，但在char数据上TextCNN更好。同时，TextCNN原论文中采用大小为3、4、5的卷积核，最后将特征相连。但若分别训练三个卷积层，结果相加将得到更好的效果
   - 同时也尝试了dropout、batch normalization、layer normalization、weight decay等，TextCNN在添加 batch normalization 层后效果提升明显。
   - 测试发现，将title与description连接后输入，比单独输入后融合或者只用其中一个效果要好。
+- GLU
+  - 尝试了单独k=3的卷积层, 2个k=3的卷积层通过residual堆叠和concat(k=3, k=5)的类inception模型, 对三个标签分别训练, 在residual和inception上的结果但也只和TextCNN相当, 但模型复杂度较高, 没有进一步改进. 
 
 ### 最后测试
 
-对swem采用swem cat作为表示层, 对三个分类器分别进行训练, 输入数据仅使用训练集的word数据并对每条文本数据使用0.2的几率drop其中的部分单词作为数据增强.  
+对swem采用swemcat和swemhier作为表示层, 对三个分类器分别进行训练, 输入数据使用训练集的全部数据(word char).分类器在隐藏层输出后经过bn层再relu激活.  
 对lstm与gru只使用word数据，cnn使用全部数据并将3、4、5大小的卷积层输出结果相加。
+
 
 <br/><br/><br/><br/>
 
@@ -202,16 +261,18 @@ python main.py --device=cuda:0 --merge --test --snapshot=snapshot/model_{number}
 | XGBoost                | 0.8516            |0.9472|0.8850|0.8190|
 | XGBoost weight word char| 0.8666            |0.9573|0.8977|0.8360|
 | SVM                    | 0.8101            |0.9110|0.8485|0.7741|
-| Byes                   | 0.7586            |0.8849|0.8024|0.7157|
-### 深度学习
+| Bayes                   | 0.7586            |0.8849|0.8024|0.7157|
+## 深度学习
 |         模型         |        总结果         | cate1 | cate2 | cate3 |
 |--------------------:|:--------------------:|:------:|:-----:|:------|
 |  (CNN+bn+relu+fc)*1 | 0.8540               |0.9545       |0.8884      |0.8201      |
 | conv_3+conv_4+conv_5 word| 0.8698          |0.9579       |0.8993      |0.8404      |
 |  GRU*1              | 0.8468               |0.9496       |0.8799      |0.8131      |
 |  LSTM*1             | 0.8543               |0.9557       |0.8868      |0.8212      |
-|3 * concat(maxpooling, avgpooling ) -> fc -> bn -> fc -> softmax | 0.8520| ? | ?　| ? |
-|3 * concat(maxpooling, avgpooling ) -> fc -> bn -> fc -> softmax  add char| 0.8579| 0.9557|0.8888|0.8262|
+|3 * swemcat word     | 0.8520               | ?           | ?　        | ?          |
+|3 * swemcat word char| 0.8579               |0.9557       |0.8888      |0.8262      |
+|3*swemcat with swemhier word char| 0.8647   |0.9582       |0.8952      |0.8339      |
+|inception(glu_3+glu_5) word| 0.8545         |0.9549       |0.8870       |0.8216      |
 
 ## 六、贡献者
 
