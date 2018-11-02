@@ -88,6 +88,23 @@ python eval.py
 # test and get submit.txt
 python test.py --save_path ../output/swem_wordchar_out.txt
 ```
+## glu运行步骤
+
+```shell
+cd glu
+# train models
+# -m for cate n(1, 2, 3)
+python train.py -m 1 --h_d 64 --embedding_dim 512 --ckpt glu_w_cate1.pth
+python train.py -m 2 --h_d 256 --embedding_dim 512 --ckpt glu_w_cate2.pth
+python train.py -m 3 --h_d 512 --embedding_dim 512 --ckpt glu_w_cate3.pth
+# if resuming training
+python train.py -m 1 --ckpt glu_w_cate1.pth -r
+python train.py -m 2 --ckpt glu_w_cate2.pth -r
+python train.py -m 3 --ckpt glu_w_cate3.pth -r
+
+# eval
+python eval.py
+```
 
 ## 常用深度学习模型运行步骤
 
@@ -182,6 +199,15 @@ python main.py --device=cuda:0 --merge --test --snapshot=snapshot/model_{number}
             cate1_classifier.py
             cate2_classifier.py
             cate3_classifier.py
+        utils
+            __init__.py
+            dataset.py
+            timer.py
+            class_weight.py
+        checkpoint
+            *.pth
+        train.py
+        eval.py
     output
     README.md
 ```
