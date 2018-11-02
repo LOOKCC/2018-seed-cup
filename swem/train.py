@@ -70,7 +70,7 @@ if __name__ == '__main__':
         from models.cate1_classifier import *
         if args.resume:
             state = torch.load(ckpt)
-            model = Cate1Classifier(input_size, state['args'])
+            model = Cate1Classifier(input_size, state['args'], hier=args.hier)
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
@@ -79,7 +79,7 @@ if __name__ == '__main__':
                 word2vec = torch.load('./preproc/word2vec.pth')
             else:
                 word2vec = torch.load('./preproc/char2vec.pth')
-            model = Cate1Classifier(input_size, args, word2vec)
+            model = Cate1Classifier(input_size, args, word2vec=word2vec, hier=args.hier)
 
     elif args.model == 2:
         from models.cate2_classifier import *
@@ -98,7 +98,7 @@ if __name__ == '__main__':
                 word2vec = torch.load('./preproc/char2vec.pth')
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate2Classifier(input_size, args, word2vec, mask1, hier=args.hier)
+            model = Cate2Classifier(input_size, args, word2vec=word2vec, mask1=mask1, hier=args.hier)
 
     elif args.model == 3:
         from models.cate3_classifier import *
@@ -117,7 +117,7 @@ if __name__ == '__main__':
                 word2vec = torch.load('./preproc/char2vec.pth')
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate3Classifier(input_size, args, word2vec, mask2, hier=args.hier)
+            model = Cate3Classifier(input_size, args, word2vec=word2vec, mask2=mask2, hier=args.hier)
 
     else:
         raise Exception
