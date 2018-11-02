@@ -1,6 +1,6 @@
 TEST_CNT = 49076
 cate_voter = [['', {}, {}, {}] for j in range(TEST_CNT)]
-with open('submit1.txt', 'r') as fp:
+with open('gru_word_out.txt', 'r') as fp:
     fp.readline()
     for i, line in enumerate(fp.readlines()):
         line = line.strip().split('\t')
@@ -48,12 +48,15 @@ def save_result(save_path):
         for info in cate_voter:
             fp.write('{}\t{}\t{}\t{}\n'.format(info[0], info[1], info[2], info[3]))
 
-update_voter('cnn_word_out.txt')
-update_voter('gru_word_out.txt')
-update_voter('lstm_word_out.txt')
+#update_voter('cnn_word_out.txt')
+update_voter('cnn345_wordchar_out.txt')
+update_voter('bagging_ordered.txt')
+update_voter('cnn_wordchar_out.txt')
 update_voter('submit_ordered.txt')
 update_voter('submit_ordered_weight.txt')
-# update_voter('submit1.txt')
+update_voter('gru_word_out.txt')
+update_voter('lstm_word_out.txt')
+update_voter('swem_wordchar_out.txt')
 
 get_result()
 

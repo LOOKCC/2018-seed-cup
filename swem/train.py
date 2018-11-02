@@ -5,6 +5,7 @@ import torch.utils.data as data
 import torch.backends.cudnn as cudnn
 import pickle
 import argparse
+import os
 
 from utils.dataset import TrainDataset, padding
 
@@ -34,8 +35,6 @@ def parse_cmd():
                         help='learning rate, default=1e-3')
     parser.add_argument('--weight_decay', type=float, default=0,
                         help='l2 weight decay, default=0')
-    # parser.add_argument('-d', '--drop', action='store_true', help='drop some words in docs while training')
-    # parser.add_argument('--drop_rate', type=float, default=0.2, help='rate of dropped words, default=0.2')
     parser.add_argument('--h_d', type=int, default=128,
                         help='hidden dim, default=128')
     parser.add_argument('--ckpt', required=True,
@@ -44,6 +43,8 @@ def parse_cmd():
                         help='word/char embedding dim, default=512')
     parser.add_argument('--class_weight', type=int, default=0,
                         help='add class weight on loss, default=0')
+    parser.add_argument('--hier', type=int, default=0,
+                        help='1 to use swem-hier, 0 to use swem-cat; default=0')
     args = parser.parse_args()
     return args
 
@@ -53,6 +54,8 @@ if __name__ == '__main__':
 
     best_score = 0
     start_epoch = 0
+
+    ckpt = os.path.join('checkpoint', args.ckpt)
 
     if args.word:
         input_size = WORDS_CNT + 1
@@ -66,46 +69,55 @@ if __name__ == '__main__':
     if args.model == 1:
         from models.cate1_classifier import *
         if args.resume:
-            state = torch.load(args.ckpt)
+            state = torch.load(ckpt)
             model = Cate1Classifier(input_size, state['args'])
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
         else:
-            word2vec = torch.load('./preproc/word2vec.pth')
+            if args.word:
+                word2vec = torch.load('./preproc/word2vec.pth')
+            else:
+                word2vec = torch.load('./preproc/char2vec.pth')
             model = Cate1Classifier(input_size, args, word2vec)
 
     elif args.model == 2:
         from models.cate2_classifier import *
         if args.resume:
-            state = torch.load(args.ckpt)
+            state = torch.load(ckpt)
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate2Classifier(input_size, state['args'], mask1=mask1)
+            model = Cate2Classifier(input_size, state['args'], mask1=mask1, hier=args.hier)
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
         else:
-            word2vec = torch.load('./preproc/word2vec.pth')
+            if args.word:
+                word2vec = torch.load('./preproc/word2vec.pth')
+            else:
+                word2vec = torch.load('./preproc/char2vec.pth')
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate2Classifier(input_size, args, word2vec, mask1)
+            model = Cate2Classifier(input_size, args, word2vec, mask1, hier=args.hier)
 
     elif args.model == 3:
         from models.cate3_classifier import *
         if args.resume:
-            state = torch.load(args.ckpt)
+            state = torch.load(ckpt)
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate3Classifier(input_size, state['args'], mask2=mask2)
+            model = Cate3Classifier(input_size, state['args'], mask2=mask2, hier=args.hier)
             model.load_state_dict(state['model'])
             start_epoch = state['epoch'] + 1
             best_score = state['best_score']
         else:
-            word2vec = torch.load('./preproc/word2vec.pth')
+            if args.word:
+                word2vec = torch.load('./preproc/word2vec.pth')
+            else:
+                word2vec = torch.load('./preproc/char2vec.pth')
             with open('./preproc/mask.pkl', 'rb') as fp:
                 mask1, mask2 = pickle.load(fp)
-            model = Cate3Classifier(input_size, args, word2vec, mask2)
+            model = Cate3Classifier(input_size, args, word2vec, mask2, hier=args.hier)
 
     else:
         raise Exception

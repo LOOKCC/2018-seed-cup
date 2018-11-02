@@ -88,7 +88,7 @@ if __name__ == '__main__':
                         help='get cate indices')
     args = parser.parse_args()
 
-    if args.w:
+    if args.word:
         feature2idx((train_b_path, train_a_path, valid_a_path), './train_words.pkl')
         feature2idx(valid_b_path, './valid_words.pkl')
         feature2idx(test_path, './test_words.pkl')

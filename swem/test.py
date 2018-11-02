@@ -3,9 +3,9 @@ import torch.utils.data as data
 import torch.nn.functional as F
 import torch.backends.cudnn as cudnn
 import pickle
+import os
 
 import argparse
-
 
 from models.cate1_classifier import Cate1Classifier
 from models.cate2_classifier import Cate2Classifier
@@ -23,13 +23,21 @@ test_chars_path = './preproc/test_chars.pkl'
 test_path = '../data/test_b.txt'
 
 
-def test(w_clf1, w_clf2, w_clf3, c_clf1, c_clf2, c_clf3, dataloader):
+def test(w_clf1, w_clf2, w_clf3, c_clf1, c_clf2, c_clf3,
+         h_w_clf1, h_w_clf2, h_w_clf3, h_c_clf1, h_c_clf2, h_c_clf3,
+         dataloader):
     w_clf1.eval()
     w_clf2.eval()
     w_clf3.eval()
     c_clf1.eval()
     c_clf2.eval()
     c_clf3.eval()
+    h_w_clf1.eval()
+    h_w_clf2.eval()
+    h_w_clf3.eval()
+    h_c_clf1.eval()
+    h_c_clf2.eval()
+    h_c_clf3.eval()
     pred1, pred2, pred3 = [], [], []
     for w_title, w_desc, c_title, c_desc, \
         w_t_len, w_d_len, c_t_len, c_d_len in dataloader:
@@ -37,16 +45,22 @@ def test(w_clf1, w_clf2, w_clf3, c_clf1, c_clf2, c_clf3, dataloader):
         w_desc = w_desc.to(device)
         c_title = c_title.to(device)
         c_desc = c_desc.to(device)
-        output1 = F.softmax(w_clf1(w_title, w_desc, w_t_len, w_d_len, mode=0), 1) + \
-                  F.softmax(c_clf1(c_title, c_desc, c_t_len, c_d_len, mode=0), 1)
+        output1 = F.softmax(w_clf1(w_title, w_desc, w_t_len, w_d_len), 1) + \
+                  F.softmax(c_clf1(c_title, c_desc, c_t_len, c_d_len), 1) + \
+                  F.softmax(h_w_clf1(w_title, w_desc, w_t_len, w_d_len), 1) + \
+                  F.softmax(h_c_clf1(c_title, c_desc, c_t_len, c_d_len), 1)
         output1 = output1.argmax(1)
         pred1.extend(output1.tolist())
-        output2 = F.softmax(w_clf2(w_title, w_desc, w_t_len, w_d_len, output1, mode=0), 1) + \
-                  F.softmax(c_clf2(c_title, c_desc, c_t_len, c_d_len, output1, mode=0), 1)
+        output2 = F.softmax(w_clf2(w_title, w_desc, w_t_len, w_d_len, output1), 1) + \
+                  F.softmax(c_clf2(c_title, c_desc, c_t_len, c_d_len, output1), 1) + \
+                  F.softmax(h_w_clf2(w_title, w_desc, w_t_len, w_d_len, output1), 1) + \
+                  F.softmax(h_c_clf2(c_title, c_desc, c_t_len, c_d_len, output1), 1)
         output2 = output2.argmax(1)
         pred2.extend(output2.tolist())
-        output3 = F.softmax(w_clf3(w_title, w_desc, w_t_len, w_d_len, output2, mode=0), 1) + \
-                  F.softmax(c_clf3(c_title, c_desc, c_t_len, c_d_len, output2, mode=0), 1)
+        output3 = F.softmax(w_clf3(w_title, w_desc, w_t_len, w_d_len, output2), 1) + \
+                  F.softmax(c_clf3(c_title, c_desc, c_t_len, c_d_len, output2), 1) + \
+                  F.softmax(h_w_clf3(w_title, w_desc, w_t_len, w_d_len, output2), 1) + \
+                  F.softmax(h_c_clf3(c_title, c_desc, c_t_len, c_d_len, output2), 1)
         pred3.extend(output3.argmax(1).tolist())
     return pred1, pred2, pred3
 
@@ -68,18 +82,6 @@ def save_result(save_path, preds):
 
 def parse_cmd():
     parser = argparse.ArgumentParser()
-    parser.add_argument('--w_clf1', required=True,
-                        help='word cate1 classifier')
-    parser.add_argument('--w_clf2', required=True,
-                        help='word cate2 classifier')
-    parser.add_argument('--w_clf3', required=True,
-                        help='word cate3 classifier')
-    parser.add_argument('--c_clf1', required=True,
-                        help='char cate1 classifier')
-    parser.add_argument('--c_clf2', required=True,
-                        help='char cate2 classifier')
-    parser.add_argument('--c_clf3', required=True,
-                        help='char cate3 classifier')
     parser.add_argument('--batch_size', type=int, default=64,
                         help='batch size, default=64')
     parser.add_argument('--save_path', required=True)
@@ -118,32 +120,56 @@ if __name__ == '__main__':
                             w_t_len, w_d_len, c_t_len, c_d_len)
     test_loader = data.DataLoader(test_set, batch_size=args.batch_size, num_workers=4)
 
-    w_clf1_state = torch.load(args.w_clf1)
+    w_clf1_state = torch.load(os.path.join('checkpoint', 'w_cate1.pth'))
     w_clf1 = Cate1Classifier(WORDS_CNT + 1, w_clf1_state['args'])
     w_clf1.load_state_dict(w_clf1_state['model'])
 
-    c_clf1_state = torch.load(args.c_clf1)
+    c_clf1_state = torch.load(os.path.join('checkpoint', 'c_cate1.pth'))
     c_clf1 = Cate1Classifier(CHARS_CNT + 1, c_clf1_state['args'])
     c_clf1.load_state_dict(c_clf1_state['model'])
+
+    h_w_clf1_state = torch.load(os.path.join('checkpoint', 'hier_w_cate1.pth'))
+    h_w_clf1 = Cate1Classifier(WORDS_CNT + 1, h_w_clf1_state['args'], hier=1)
+    h_w_clf1.load_state_dict(h_w_clf1_state['model'])
+
+    h_c_clf1_state = torch.load(os.path.join('checkpoint', 'hier_c_cate1.pth'))
+    h_c_clf1 = Cate1Classifier(CHARS_CNT + 1, h_c_clf1_state['args'], hier=1)
+    h_c_clf1.load_state_dict(h_c_clf1_state['model'])
 
     with open('./preproc/mask.pkl', 'rb') as fp:
         mask1, mask2 = pickle.load(fp)
 
-    w_clf2_state = torch.load(args.w_clf2)
+    w_clf2_state = torch.load(os.path.join('checkpoint', 'w_cate2.pth'))
     w_clf2 = Cate2Classifier(WORDS_CNT + 1, w_clf2_state['args'], mask1=mask1)
     w_clf2.load_state_dict(w_clf2_state['model'])
 
-    c_clf2_state = torch.load(args.c_clf2)
+    c_clf2_state = torch.load(os.path.join('checkpoint', 'c_cate2.pth'))
     c_clf2 = Cate2Classifier(CHARS_CNT + 1, c_clf2_state['args'], mask1=mask1)
     c_clf2.load_state_dict(c_clf2_state['model'])
 
-    w_clf3_state = torch.load(args.w_clf3)
+    h_w_clf2_state = torch.load(os.path.join('checkpoint', 'hier_w_cate2.pth'))
+    h_w_clf2 = Cate2Classifier(WORDS_CNT + 1, h_w_clf2_state['args'], mask1=mask1, hier=1)
+    h_w_clf2.load_state_dict(h_w_clf2_state['model'])
+
+    h_c_clf2_state = torch.load(os.path.join('checkpoint', 'hier_c_cate2.pth'))
+    h_c_clf2 = Cate2Classifier(CHARS_CNT + 1, h_c_clf2_state['args'], mask1=mask1, hier=1)
+    h_c_clf2.load_state_dict(h_c_clf2_state['model'])
+
+    w_clf3_state = torch.load(os.path.join('checkpoint', 'w_cate3.pth'))
     w_clf3 = Cate3Classifier(WORDS_CNT + 1, w_clf3_state['args'], mask2=mask2)
     w_clf3.load_state_dict(w_clf3_state['model'])
 
-    c_clf3_state = torch.load(args.c_clf3)
+    c_clf3_state = torch.load(os.path.join('checkpoint', 'c_cate3.pth'))
     c_clf3 = Cate3Classifier(CHARS_CNT + 1, c_clf3_state['args'], mask2=mask2)
     c_clf3.load_state_dict(c_clf3_state['model'])
+
+    h_w_clf3_state = torch.load(os.path.join('checkpoint', 'hier_w_cate3.pth'))
+    h_w_clf3 = Cate3Classifier(WORDS_CNT + 1, h_w_clf3_state['args'], mask2=mask2, hier=1)
+    h_w_clf3.load_state_dict(h_w_clf3_state['model'])
+
+    h_c_clf3_state = torch.load(os.path.join('checkpoint', 'hier_c_cate3.pth'))
+    h_c_clf3 = Cate3Classifier(CHARS_CNT + 1, h_c_clf3_state['args'], mask2=mask2, hier=1)
+    h_c_clf3.load_state_dict(h_c_clf3_state['model'])
 
     w_clf1 = w_clf1.to(device)
     w_clf2 = w_clf2.to(device)
@@ -153,9 +179,19 @@ if __name__ == '__main__':
     c_clf2 = c_clf2.to(device)
     c_clf3 = c_clf3.to(device)
 
+    h_w_clf1 = h_w_clf1.to(device)
+    h_w_clf2 = h_w_clf2.to(device)
+    h_w_clf3 = h_w_clf3.to(device)
+
+    h_c_clf1 = h_c_clf1.to(device)
+    h_c_clf2 = h_c_clf2.to(device)
+    h_c_clf3 = h_c_clf3.to(device)
+
     if torch.cuda.is_available():
         cudnn.benchmark = True
 
     with torch.no_grad():
-        pred1, pred2, pred3 = test(w_clf1, w_clf2, w_clf3, c_clf1, c_clf2, c_clf3, test_loader)
+        pred1, pred2, pred3 = test(w_clf1, w_clf2, w_clf3, c_clf1, c_clf2, c_clf3,
+                                   h_w_clf1, h_w_clf2, h_w_clf3, h_c_clf1, h_c_clf2, h_c_clf3,
+                                   test_loader)
     save_result(args.save_path, (pred1, pred2, pred3))
