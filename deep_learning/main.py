@@ -17,6 +17,7 @@ from models.model import Model
 
 class CateManager(object):
     """
+    Store the infomation of categories
     """
 
     def __init__(self, args, LABEL):
@@ -40,6 +41,7 @@ class CateManager(object):
                 self.cate2to3[idx2, idx3] = 1
 
     def get_weights(self, LABEL):
+        '''Get weights to balance classes'''
         weights = []
         for i in range(len(LABEL)):
             freqs = LABEL[i].vocab.freqs
@@ -67,6 +69,7 @@ class CateManager(object):
         return weights
 
     def merge_weights(self, cate_out, label=None):
+        '''Merge probability of each category'''
         if self.merge:
             # cate_out[1] = cate_out[1] * self.cate1to2[cate_out[0].max(1)[1]]
             # cate_out[2] = cate_out[2] * self.cate2to3[cate_out[1].max(1)[1]]
